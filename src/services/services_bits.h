@@ -36,7 +36,14 @@ bit_count( int32_t val );
 uint32_t
 bit_next_largest( uint32_t val );
 
+void
+bit_display_32( int32_t val );
 
+void
+bit_display_64( int64_t val );
+
+int32_t
+bit_reverse( int32_t val );
 
 void
 utest_services_bits( void );

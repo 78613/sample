@@ -11,6 +11,76 @@
 /* Toolbox */
 #include <services.h>
 
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+#define BIT_WIDTH_32 (32)
+#define BIT_WIDTH_64 (64)
+
+
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+void
+bit_display_32( int32_t val )
+{
+    char v                       = 0;
+    char arr[ BIT_WIDTH_32 + 1 ] = {0}; /* Account for nul termination char */
+
+    /* enforce nul termination */
+    arr[BIT_WIDTH_32] = '\0';
+
+    /* walk from msb to lsb */
+    for (int32_t i = 0; i < BIT_WIDTH_32; i++) {
+        /* Get the ascii value to set */
+        v = (val & (1 << i)) ? '1' : '0';
+
+        /* Insert in array in reverse order to bit walking */
+        arr[BIT_WIDTH_32 - (1 + i)] = v;
+    }
+
+    CDISPLAY("0b%s", arr);
+
+    return;
+} /* bit_display_32() */
+
+
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+void
+bit_display_64( int64_t val )
+{
+    char v                       = 0;
+    char arr[ BIT_WIDTH_64 + 1 ] = {0}; /* Account for nul termination char */
+
+    /* enforce nul termination */
+    arr[BIT_WIDTH_64] = '\0';
+
+    /* walk from msb to lsb */
+    for (int32_t i = 0; i < BIT_WIDTH_64; i++) {
+        /* Get the ascii value to set */
+        /* Note: use unsigned long long definition for 64bit correctness */
+        v = (val & (1ull << i)) ? '1' : '0';
+
+        /* Insert in array in reverse order to bit walking */
+        arr[BIT_WIDTH_64 - (1 + i)] = v;
+    }
+
+    CDISPLAY("0b%s", arr);
+
+    return;
+} /* bit_display_64() */
+
 
 
 /*
@@ -156,6 +226,7 @@ bit_count( int32_t val )
  *
  ****************************************************************************
  */
+//FIXME!!!
 int32_t
 bit_next_largest( uint32_t val )
 {
@@ -174,6 +245,40 @@ bit_next_largest( uint32_t val )
 } /* bit_next_largest() */
 
 
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+int32_t
+bit_reverse( int32_t val )
+{
+    int32_t out = 0;
+
+    if (0 == val || (-1 == val)) {
+        /* Well known symmetric */
+        out = val;
+        goto exception;
+    }
+
+    for (int32_t i = 0; i < BIT_WIDTH_32; i++) {
+        /* verbose calculation for readability / maintainability */
+        int32_t bit_pos = (BIT_WIDTH_32 - 1) - i;
+        int32_t bit_val = !!(val & (1 << i));
+
+        out |= bit_val << bit_pos;
+    }
+
+exception:
+    /* optional output validation */
+    bit_display_32(val);
+    bit_display_32(out);
+
+    return out;
+} /* bit_reverse() */
+
+
 
 /*
  ****************************************************************************
@@ -184,21 +289,25 @@ bit_next_largest( uint32_t val )
 static void
 utest_control( void )
 {
+
+    int32_t arr[]  = {
+                          0,
+                          2,
+                          8,
+                        128,
+                         15,
+                          3,
+                          9,
+                         -1,
+                     };
+    const size_t   elems = sizeof(arr) / sizeof(int32_t);
+
+
+
     CDISPLAY("=========================================================");
     {
         int32_t rc     = 0;
         int32_t bit    = 0;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
@@ -211,17 +320,6 @@ utest_control( void )
     {
         int32_t rc     = 0;
         int32_t bit    = 0;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
@@ -233,17 +331,6 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         int32_t bit    = 0;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
@@ -255,61 +342,32 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         int32_t bit    = 4;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = bit_clear_lsb_to_kth(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
+            bit_display_32(val);
+            bit_display_32(out);
         }
     }
 
     CDISPLAY("=========================================================");
     {
         int32_t bit    = 2;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = bit_clear_msb_to_kth(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
+            bit_display_32(val);
+            bit_display_32(out);
         }
     }
 
     CDISPLAY("=========================================================");
     {
         int32_t bit    = 0;
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
@@ -320,18 +378,6 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
-
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = bit_clear_lsb(val);
@@ -342,18 +388,6 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          1,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
-
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = bit_get_lsb(val);
@@ -363,18 +397,6 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          15,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
-
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = bit_count(val);
@@ -384,25 +406,40 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        int32_t arr[]  = {
-                          0,
-                          2,
-                          8,
-                          128,
-                          15,
-                          3,
-                          9,
-                          -1,
-                         };
-        size_t   elems = sizeof(arr) / sizeof(int32_t);
-
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t  val = arr[cnt];
-            uint32_t out = bit_next_largest(val);
-            CDISPLAY("%3i ->  %3i", val, out);
+            CDISPLAY("FIXME!!!");
+            //uint32_t out = bit_next_largest(val);
+            //CDISPLAY("%3i ->  %3i", val, out);
         }
     }
 
+    CDISPLAY("=========================================================");
+    {
+        for (size_t cnt = 0; cnt < elems; cnt++) {
+            int32_t  val = arr[cnt];
+            //CDISPLAY("%3i ->  %3i", val, 0);
+            bit_display_32(val);
+        }
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        for (size_t cnt = 0; cnt < elems; cnt++) {
+            int32_t  val = arr[cnt];
+            //CDISPLAY("%3i ->  %3i", val, 0);
+            bit_display_64(val);
+        }
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        for (size_t cnt = 0; cnt < elems; cnt++) {
+            int32_t val = arr[cnt];
+            int32_t out = bit_reverse(val);
+            //CDISPLAY("%3i ->  %3i", val, out);
+        }
+    }
 
 
 
