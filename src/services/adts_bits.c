@@ -1,15 +1,11 @@
 
-#include <errno.h>
-#include <stdio.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
-#include <unistd.h> /* sleep() */
 #include <stdbool.h>
 #include <inttypes.h>
 
 /* Toolbox */
-#include <services.h>
+#include <adts_services.h>
 
 /*
  ****************************************************************************
@@ -28,7 +24,7 @@
  ****************************************************************************
  */
 void
-bit_display_32( int32_t val )
+adts_bit_display_32( int32_t val )
 {
     char v                       = 0;
     char arr[ BIT_WIDTH_32 + 1 ] = {0}; /* Account for nul termination char */
@@ -48,7 +44,7 @@ bit_display_32( int32_t val )
     CDISPLAY("0b%s", arr);
 
     return;
-} /* bit_display_32() */
+} /* adts_bit_display_32() */
 
 
 /*
@@ -58,7 +54,7 @@ bit_display_32( int32_t val )
  ****************************************************************************
  */
 void
-bit_display_64( int64_t val )
+adts_bit_display_64( int64_t val )
 {
     char v                       = 0;
     char arr[ BIT_WIDTH_64 + 1 ] = {0}; /* Account for nul termination char */
@@ -79,7 +75,7 @@ bit_display_64( int64_t val )
     CDISPLAY("0b%s", arr);
 
     return;
-} /* bit_display_64() */
+} /* adts_bit_display_64() */
 
 
 
@@ -90,11 +86,11 @@ bit_display_64( int64_t val )
  ****************************************************************************
  */
 bool
-bit_is_set( int32_t value,
-            int32_t bit )
+adts_bit_is_set( int32_t value,
+                 int32_t bit )
 {
     return !!(value & (1 << bit));
-} /* bit_is_set() */
+} /* adts_bit_is_set() */
 
 
 /*
@@ -104,26 +100,26 @@ bit_is_set( int32_t value,
  ****************************************************************************
  */
 bool
-bit_is_not_set( int32_t value,
+adts_bit_is_not_set( int32_t value,
+                     int32_t bit )
+{
+
+    return !(adts_bit_is_set(value, bit));
+} /* adts_bit_is_not_set() */
+
+
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+int32_t
+adts_bit_clear( int32_t value,
                 int32_t bit )
 {
-
-    return !(bit_is_set(value, bit));
-} /* bit_is_not_set() */
-
-
-/*
- ****************************************************************************
- *
- *
- ****************************************************************************
- */
-int32_t
-bit_clear( int32_t value,
-           int32_t bit )
-{
     return value & ~(1 << bit);
-} /* bit_clear() */
+} /* adts_bit_clear() */
 
 
 /*
@@ -133,13 +129,13 @@ bit_clear( int32_t value,
  ****************************************************************************
  */
 int32_t
-bit_clear_msb_to_kth( int32_t value,
-                      int32_t bit )
+adts_bit_clear_msb_to_kth( int32_t value,
+                           int32_t bit )
 {
     int32_t mask = (1 << bit) - 1;
 
     return value & mask;
-} /* bit_clear_msb_to_kth() */
+} /* adts_bit_clear_msb_to_kth() */
 
 
 /*
@@ -149,13 +145,13 @@ bit_clear_msb_to_kth( int32_t value,
  ****************************************************************************
  */
 int32_t
-bit_clear_lsb_to_kth( int32_t value,
-                      int32_t bit )
+adts_bit_clear_lsb_to_kth( int32_t value,
+                           int32_t bit )
 {
     int32_t mask = -1 << bit;
 
     return value & mask;
-} /* bit_clear_lsb_to_kth() */
+} /* adts_bit_clear_lsb_to_kth() */
 
 
 /*
@@ -165,13 +161,13 @@ bit_clear_lsb_to_kth( int32_t value,
  ****************************************************************************
  */
 int32_t
-bit_toggle( int32_t value,
-            int32_t bit )
+adts_bit_toggle( int32_t value,
+                 int32_t bit )
 {
     int32_t mask = (1 << bit);
 
     return value ^ mask;
-} /* bit_toggle() */
+} /* adts_bit_toggle() */
 
 
 /*
@@ -181,10 +177,10 @@ bit_toggle( int32_t value,
  ****************************************************************************
  */
 int32_t
-bit_clear_lsb( int32_t val )
+adts_bit_clear_lsb( int32_t val )
 {
     return (val & (val - 1));
-} /* bit_clear_lsb() */
+} /* adts_bit_clear_lsb() */
 
 
 /*
@@ -194,10 +190,10 @@ bit_clear_lsb( int32_t val )
  ****************************************************************************
  */
 int32_t
-bit_get_lsb( int32_t val )
+adts_bit_get_lsb( int32_t val )
 {
     return (val & (-val));
-} /* bit_get_lsb() */
+} /* adts_bit_get_lsb() */
 
 
 /*
@@ -207,7 +203,7 @@ bit_get_lsb( int32_t val )
  ****************************************************************************
  */
 int32_t
-bit_count( int32_t val )
+adts_bit_count( int32_t val )
 {
     int32_t bits = 0;
 
@@ -217,7 +213,7 @@ bit_count( int32_t val )
     }
 
     return bits;
-} /* bit_count() */
+} /* adts_bit_count() */
 
 
 /*
@@ -228,7 +224,7 @@ bit_count( int32_t val )
  */
 //FIXME!!!
 int32_t
-bit_next_largest( uint32_t val )
+adts_bit_next_largest( uint32_t val )
 {
     uint32_t out      = 0;
     uint32_t smallest = 0;
@@ -242,7 +238,7 @@ bit_next_largest( uint32_t val )
     out      = ripple | ones;
 
     return (int32_t) out;
-} /* bit_next_largest() */
+} /* adts_bit_next_largest() */
 
 
 /*
@@ -252,7 +248,7 @@ bit_next_largest( uint32_t val )
  ****************************************************************************
  */
 int32_t
-bit_reverse( int32_t val )
+adts_bit_reverse( int32_t val )
 {
     int32_t out = 0;
 
@@ -264,19 +260,19 @@ bit_reverse( int32_t val )
 
     for (int32_t i = 0; i < BIT_WIDTH_32; i++) {
         /* verbose calculation for readability / maintainability */
-        int32_t bit_pos = (BIT_WIDTH_32 - 1) - i;
-        int32_t bit_val = !!(val & (1 << i));
+        int32_t bitpos = (BIT_WIDTH_32 - 1) - i;
+        int32_t bitval = !!(val & (1 << i));
 
-        out |= bit_val << bit_pos;
+        out |= bitval << bitpos;
     }
 
 exception:
     /* optional output validation */
-    bit_display_32(val);
-    bit_display_32(out);
+    adts_bit_display_32(val);
+    adts_bit_display_32(out);
 
     return out;
-} /* bit_reverse() */
+} /* adts_bit_reverse() */
 
 
 
@@ -311,7 +307,7 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            rc = bit_is_set(val, bit);
+            rc = adts_bit_is_set(val, bit);
             CDISPLAY("%3i bit %2i  %s", val, bit, (rc) ? "true" : "false");
         }
     }
@@ -323,7 +319,7 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            rc = bit_is_not_set(val, bit);
+            rc = adts_bit_is_not_set(val, bit);
             CDISPLAY("%3i bit %2i  %s", val, bit, (rc) ? "true" : "false");
         }
     }
@@ -334,7 +330,7 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_clear(val, bit);
+            int32_t out = adts_bit_clear(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
         }
     }
@@ -345,10 +341,10 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_clear_lsb_to_kth(val, bit);
+            int32_t out = adts_bit_clear_lsb_to_kth(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
-            bit_display_32(val);
-            bit_display_32(out);
+            adts_bit_display_32(val);
+            adts_bit_display_32(out);
         }
     }
 
@@ -358,10 +354,10 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_clear_msb_to_kth(val, bit);
+            int32_t out = adts_bit_clear_msb_to_kth(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
-            bit_display_32(val);
-            bit_display_32(out);
+            adts_bit_display_32(val);
+            adts_bit_display_32(out);
         }
     }
 
@@ -371,7 +367,7 @@ utest_control( void )
 
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_toggle(val, bit);
+            int32_t out = adts_bit_toggle(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
         }
     }
@@ -380,7 +376,7 @@ utest_control( void )
     {
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_clear_lsb(val);
+            int32_t out = adts_bit_clear_lsb(val);
             CDISPLAY("%3i ->  %3i", val, out);
         }
     }
@@ -390,7 +386,7 @@ utest_control( void )
     {
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_get_lsb(val);
+            int32_t out = adts_bit_get_lsb(val);
             CDISPLAY("%3i ->  %3i", val, out);
         }
     }
@@ -399,7 +395,7 @@ utest_control( void )
     {
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_count(val);
+            int32_t out = adts_bit_count(val);
             CDISPLAY("%3i ->  %3i", val, out);
         }
     }
@@ -409,7 +405,7 @@ utest_control( void )
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t  val = arr[cnt];
             CDISPLAY("FIXME!!!");
-            //uint32_t out = bit_next_largest(val);
+            //uint32_t out = adts_bit_next_largest(val);
             //CDISPLAY("%3i ->  %3i", val, out);
         }
     }
@@ -419,7 +415,7 @@ utest_control( void )
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t  val = arr[cnt];
             //CDISPLAY("%3i ->  %3i", val, 0);
-            bit_display_32(val);
+            adts_bit_display_32(val);
         }
     }
 
@@ -428,7 +424,7 @@ utest_control( void )
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t  val = arr[cnt];
             //CDISPLAY("%3i ->  %3i", val, 0);
-            bit_display_64(val);
+            adts_bit_display_64(val);
         }
     }
 
@@ -436,7 +432,7 @@ utest_control( void )
     {
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
-            int32_t out = bit_reverse(val);
+            int32_t out = adts_bit_reverse(val);
             //CDISPLAY("%3i ->  %3i", val, out);
         }
     }

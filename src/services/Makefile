@@ -1,10 +1,14 @@
 
 
-HFILES  += services.h
-HFILES  += services_bits.h
+HFILES  += adts_bits.h
+HFILES  += adts_hexdump.h
+HFILES  += adts_snapshot.h
+HFILES  += adts_services.h
 
 CFILES  += utest.c
-CFILES  += services_bits.c
+CFILES  += adts_bits.c
+CFILES  += adts_hexdump.c
+CFILES  += adts_snapshot.c
 
 # Everything below this line is standard Makefile logic:
 # ======================================================
@@ -46,7 +50,7 @@ unittest.exe:
 	@echo "Compile:"
 	@echo "========"
 	mkdir -p bin
-	$(CC) -I ${PWD} $(CFLAGS) -o bin/utest.exe $(CFILES) -lpthread
+	$(CC) -I ${PWD} $(CFLAGS) -o bin/utest.exe $(CFILES) -lpthread -lrt
 	mv *.[i,s,o] bin/
 
 	@echo ""

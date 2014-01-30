@@ -1,6 +1,6 @@
 
-#ifndef _H_SERVICES
-#define _H_SERVICES
+#ifndef _H_ADTS_SERVICES
+#define _H_ADTS_SERVICES
 
 #include <sched.h> /* sched_getcpu() */
 #include <stdio.h> /* printf() */
@@ -40,7 +40,7 @@ int sched_getcpu(void);
     #define CDISPLAY(_format, ...) /* compile disabled */
 #endif
 
-#endif /* _H_SERVICES */
+#endif /* _H_ADTS_SERVICES */
 
 
 
