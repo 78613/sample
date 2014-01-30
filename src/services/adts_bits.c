@@ -451,10 +451,10 @@ utest_control( void )
  ****************************************************************************
  */
 void
-utest_services_bits( void )
+utest_adts_bits( void )
 {
 
     utest_control();
 
     return;
-} /* utest_services_bits() */
+} /* utest_adts_bits() */
