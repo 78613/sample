@@ -1,15 +1,5 @@
 
-
-HFILES  += adts_bits.h
-HFILES  += adts_time.h
-HFILES  += adts_hexdump.h
-HFILES  += adts_snapshot.h
-HFILES  += adts_services.h
-
-CFILES  += adts_bits.c
-CFILES  += adts_time.c
-CFILES  += adts_hexdump.c
-CFILES  += adts_snapshot.c
+CFILES  += utest.c
 
 # Everything below this line is standard Makefile logic:
 # ======================================================
@@ -22,7 +12,7 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
 # Use color enabled GCC output for readability
  CC       = colorgcc
 
- CFLAGS  += -c 
+#CFLAGS  += -c 
  CFLAGS  += -g # Produce debugging information
 #CFLAGS  += -Q # Print compiled function and statistics
  CFLAGS  += -fverbose-asm
@@ -35,25 +25,40 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
 #CFLAGS  += -Werror 
 #CFLAGS  += -pedantic
  CFLAGS  += -O3
- CFLAGS  += -D__SERVICES_DISPLAY
+ CFLAGS  += -pthread #pthread_yield()
 
+ LPATHS += -L../adts/bin
+
+#LNAMES += -lpthread
+#LNAMES += -lrt
+ LNAMES += -ladts
+
+#HPATHS += ${PWD}
+ HPATHS += -I ../adts/
 
 # "all" should always be the first defined target to ensure default build
-all: output
+all: unittest.exe
 
-output: 
-	@echo "" 
-	@echo "Cleanup:" 
+unittest.exe: 
+	@echo ""
+	@echo "Cleanup:"
 	@echo "========"
 	rm -fr bin
 
 	@echo ""
-	@echo "Compile Shared Library:"
-	@echo "======================="
+	@echo "Compile:"
+	@echo "========"
 	mkdir -p bin
-	$(CC) -I ${PWD} -fPIC $(CFLAGS) $(CFILES) 
-	$(CC) -I ${PWD} -shared -o libadts.so $(OBJECTS) -lrt
+	$(CC) $(HPATHS) $(CFLAGS) -o bin/utest.exe $(CFILES) $(LPATHS) $(LNAMES)
+    #$(CC) -I ${PWD} $(CFLAGS) -o bin/utest.exe $(CFILES) -lpthread -lrt -ladts
+    #gcc -static main.c -L. -lmean -o statically_linked
 	mv *.[i,s,o] bin/
-	mv *.so bin/
+
+	@echo ""
+	@echo "Unit Test:"
+	@echo "=========="
+	LD_LIBRARY_PATH=../adts/bin/:$(LD_LIBRARY_PATH)
+	bin/utest.exe 
 
 #end of file
+
