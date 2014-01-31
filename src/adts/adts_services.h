@@ -27,7 +27,7 @@ int sched_getcpu(void);
  *
  **************************************************************************
  */
-#if defined(__SERVICES_DISPLAY)
+#if defined(__ADTS_DISPLAY)
     #define CDISPLAY(_format, ...)                                      \
     do {                                                                \
         char _buffer[256] = {0};                                        \
