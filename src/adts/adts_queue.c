@@ -234,11 +234,11 @@ adts_queue_create( void )
 static void
 utest_queue_bytes( void )
 {
-    _Static_assert(sizeof(queue_t) < sizeof(adts_queue_t),
-        "Mismatch structs detected");
-
     CDISPLAY("[%u]", sizeof(queue_t));
     CDISPLAY("[%u]", sizeof(adts_queue_t));
+
+    _Static_assert(sizeof(queue_t) < sizeof(adts_queue_t),
+        "Mismatch structs detected");
 
     return;
 } /* utest_queue_bytes() */

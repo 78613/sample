@@ -273,11 +273,11 @@ exception:
 static void
 utest_stack_bytes( void )
 {
-    _Static_assert(sizeof(stack_t) < sizeof(adts_stack_t),
-        "Mismatch structs detected");
-
     CDISPLAY("[%u]", sizeof(stack_t));
     CDISPLAY("[%u]", sizeof(adts_stack_t));
+
+    _Static_assert(sizeof(stack_t) < sizeof(adts_stack_t),
+        "Mismatch structs detected");
 
     return;
 } /* utest_stack_bytes() */
