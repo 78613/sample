@@ -37,19 +37,19 @@ typedef struct {
  **************************************************************************
  */
 bool
-queue_is_empty( adts_queue_t *p_adts_queue );
+adts_queue_is_empty( adts_queue_t *p_adts_queue );
 
 bool
-queue_is_not_empty( adts_queue_t *p_adts_queue );
+adts_queue_is_not_empty( adts_queue_t *p_adts_queue );
 
 void *
-queue_dequeue( adts_queue_t *p_adts_queue );
+adts_queue_dequeue( adts_queue_t *p_adts_queue );
 
 int32_t
-queue_enqueue( adts_queue_t *p_adts_queue,
-               void         *p_data );
+adts_queue_enqueue( adts_queue_t *p_adts_queue,
+                    void         *p_data );
 void
-queue_destroy( adts_queue_t *p_adts_queue );
+adts_queue_destroy( adts_queue_t *p_adts_queue );
 
 adts_queue_t *
 adts_queue_create( void );

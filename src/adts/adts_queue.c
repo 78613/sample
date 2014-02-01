@@ -62,12 +62,12 @@ typedef struct {
  ****************************************************************************
  */
 bool
-queue_is_empty( adts_queue_t *p_adts_queue )
+adts_queue_is_empty( adts_queue_t *p_adts_queue )
 {
     queue_t *p_queue = (queue_t *) p_adts_queue;
 
     return ((NULL == p_queue->p_head) && (NULL == p_queue->p_tail));
-} /* queue_is_empty() */
+} /* adts_queue_is_empty() */
 
 
 /*
@@ -77,10 +77,10 @@ queue_is_empty( adts_queue_t *p_adts_queue )
  ****************************************************************************
  */
 bool
-queue_is_not_empty( adts_queue_t *p_adts_queue )
+adts_queue_is_not_empty( adts_queue_t *p_adts_queue )
 {
-    return !(queue_is_empty(p_adts_queue));
-} /* queue_is_not_empty() */
+    return !(adts_queue_is_empty(p_adts_queue));
+} /* adts_queue_is_not_empty() */
 
 
 /*
@@ -90,7 +90,7 @@ queue_is_not_empty( adts_queue_t *p_adts_queue )
  ****************************************************************************
  */
 void *
-queue_dequeue( adts_queue_t *p_adts_queue )
+adts_queue_dequeue( adts_queue_t *p_adts_queue )
 {
     void         *p_data  = NULL;
     queue_t      *p_queue = (queue_t *) p_adts_queue;
@@ -118,7 +118,7 @@ queue_dequeue( adts_queue_t *p_adts_queue )
 
 exception:
     return p_data;
-} /* queue_dequeue() */
+} /* adts_queue_dequeue() */
 
 
 /*
@@ -128,8 +128,8 @@ exception:
  ****************************************************************************
  */
 int32_t
-queue_enqueue( adts_queue_t *p_adts_queue,
-               void         *p_data )
+adts_queue_enqueue( adts_queue_t *p_adts_queue,
+                    void         *p_data )
 {
     int32_t       rc      = 0;
     queue_t      *p_queue = (queue_t *) p_adts_queue;
@@ -156,7 +156,7 @@ queue_enqueue( adts_queue_t *p_adts_queue,
 
 exception:
     return rc;
-} /* queue_enqueue() */
+} /* adts_queue_enqueue() */
 
 
 
@@ -167,12 +167,12 @@ exception:
  ****************************************************************************
  */
 void
-queue_destroy( adts_queue_t *p_adts_queue )
+adts_queue_destroy( adts_queue_t *p_adts_queue )
 {
     free(p_adts_queue);
 
     return;
-} /* queue_destroy() */
+} /* adts_queue_destroy() */
 
 
 /*
@@ -241,9 +241,9 @@ utest_control( void )
         adts_queue_t *p_queue = NULL;
 
         p_queue = adts_queue_create();
-        queue_enqueue(p_queue, -1);
-        (void) queue_dequeue(p_queue);
-        queue_destroy(p_queue);
+        adts_queue_enqueue(p_queue, -1);
+        (void) adts_queue_dequeue(p_queue);
+        adts_queue_destroy(p_queue);
     }
 
 
