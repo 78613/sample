@@ -8,6 +8,7 @@
 
 /* Toolbox */
 #include <adts_queue.h>
+#include <adts_private.h>
 #include <adts_services.h>
 
 
@@ -42,6 +43,7 @@ typedef struct {
     size_t        elems_curr;
     queue_elem_t *p_head;
     queue_elem_t *p_tail;
+    adts_sanity_t sanity;
 } queue_t;
 
 
@@ -92,9 +94,12 @@ adts_queue_is_not_empty( adts_queue_t *p_adts_queue )
 void *
 adts_queue_dequeue( adts_queue_t *p_adts_queue )
 {
-    void         *p_data  = NULL;
-    queue_t      *p_queue = (queue_t *) p_adts_queue;
-    queue_elem_t *p_node  = NULL;
+    void          *p_data   = NULL;
+    queue_t       *p_queue  = (queue_t *) p_adts_queue;
+    queue_elem_t  *p_node   = NULL;
+    adts_sanity_t *p_sanity = &(p_queue->sanity);
+
+    adts_sanity_entry(p_sanity);
 
     /* Ensure we don't defer a null tail pointer */
     if (p_queue->p_tail) {
@@ -117,6 +122,7 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
     free(p_node);
 
 exception:
+    adts_sanity_exit(p_sanity);
     return p_data;
 } /* adts_queue_dequeue() */
 
@@ -131,12 +137,15 @@ int32_t
 adts_queue_enqueue( adts_queue_t *p_adts_queue,
                     void         *p_data )
 {
-    int32_t       rc      = 0;
-    queue_t      *p_queue = (queue_t *) p_adts_queue;
-    queue_elem_t *p_node  = NULL;
+    int32_t        rc       = 0;
+    queue_t       *p_queue  = (queue_t *) p_adts_queue;
+    queue_elem_t  *p_node   = NULL;
+    adts_sanity_t *p_sanity = &(p_queue->sanity);
+
+    adts_sanity_entry(p_sanity);
 
     p_node = calloc(1, sizeof(*p_node));
-    if (NULL == p_node) {
+    if (unlikely(NULL == p_node)) {
         rc = ENOMEM;
         goto exception;
     }
@@ -155,6 +164,7 @@ adts_queue_enqueue( adts_queue_t *p_adts_queue,
     }
 
 exception:
+    adts_sanity_exit(p_sanity);
     return rc;
 } /* adts_queue_enqueue() */
 
@@ -169,7 +179,14 @@ exception:
 void
 adts_queue_destroy( adts_queue_t *p_adts_queue )
 {
-    free(p_adts_queue);
+    queue_t       *p_queue  = (queue_t *) p_adts_queue;
+    adts_sanity_t *p_sanity = &(p_queue->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    free(p_queue);
+
+    /* No adts_sanity_exit() since we've freed the memory */
 
     return;
 } /* adts_queue_destroy() */
@@ -184,7 +201,7 @@ adts_queue_destroy( adts_queue_t *p_adts_queue )
 adts_queue_t *
 adts_queue_create( void )
 {
-    adts_queue_t *p_adts_queue =  calloc(1, sizeof(*p_adts_queue));
+    adts_queue_t *p_adts_queue = calloc(1, sizeof(*p_adts_queue));
 
     return p_adts_queue;
 } /* adts_queue_create() */

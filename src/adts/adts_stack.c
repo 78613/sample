@@ -8,6 +8,7 @@
 
 /* Toolbox */
 #include <adts_stack.h>
+#include <adts_private.h>
 #include <adts_services.h>
 
 
@@ -41,6 +42,7 @@ typedef struct {
     size_t        elems_curr;
     size_t        elems_limit;
     stack_elem_t *workspace;
+    adts_sanity_t sanity;
 } stack_t;
 
 
@@ -91,10 +93,16 @@ adts_stack_is_not_empty( adts_stack_t *p_adts_stack )
 void *
 adts_stack_peek( adts_stack_t *p_adts_stack )
 {
-    stack_t      *p_stack = (stack_t *) p_adts_stack;
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
+
+    adts_sanity_entry(p_sanity);
+
     int32_t       offset  = p_stack->elems_curr - 1;
     stack_elem_t *p_elem  = &(p_stack->workspace[offset]);
     void         *p_data  = p_elem->p_data;
+
+    adts_sanity_exit(p_sanity);
 
     return p_data;
 } /* adts_stack_peek() */
@@ -108,12 +116,15 @@ adts_stack_peek( adts_stack_t *p_adts_stack )
 void *
 adts_stack_pop( adts_stack_t *p_adts_stack )
 {
-    stack_t      *p_stack = (stack_t *) p_adts_stack;
-    void         *p_data  = NULL;
-    int32_t       offset  = 0;
-    stack_elem_t *p_elem  = NULL;
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    void          *p_data   = NULL;
+    int32_t        offset   = 0;
+    stack_elem_t  *p_elem   = NULL;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
 
-    if (0 == p_stack->elems_curr) {
+    adts_sanity_entry(p_sanity);
+
+    if (unlikely(0 == p_stack->elems_curr)) {
         /* empty stack */
         goto exception;
     }
@@ -126,6 +137,7 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
     memset(p_elem, 0, sizeof(*p_elem));
 
 exception:
+    adts_sanity_exit(p_sanity);
     return p_data;
 } /* adts_stack_pop() */
 
@@ -140,15 +152,18 @@ adts_stack_push( adts_stack_t *p_adts_stack,
                  void         *p_data,
                  size_t        bytes )
 {
-    int32_t       rc      = 0;
-    int32_t       offset  = 0;
-    stack_elem_t *p_elem  = NULL;
-    stack_t      *p_stack = (stack_t *) p_adts_stack;
+    int32_t        rc       = 0;
+    int32_t        offset   = 0;
+    stack_elem_t  *p_elem   = NULL;
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
+
+    adts_sanity_entry(p_sanity);
 
     assert(p_data);
     assert(bytes);
 
-    if (p_stack->elems_curr == p_stack->elems_limit) {
+    if (unlikely(p_stack->elems_curr == p_stack->elems_limit)) {
         rc = ENOMEM;
         goto exception;
     }
@@ -161,6 +176,7 @@ adts_stack_push( adts_stack_t *p_adts_stack,
     p_stack->elems_curr++;
 
 exception:
+    adts_sanity_exit(p_sanity);
     return rc;
 } /* adts_stack_push() */
 
@@ -173,10 +189,15 @@ exception:
 void
 adts_stack_destroy( adts_stack_t *p_adts_stack )
 {
-    stack_t *p_stack = (stack_t *) p_adts_stack;
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
+
+    adts_sanity_entry(p_sanity);
 
     free(p_stack->workspace);
     free(p_stack);
+
+    /* No adts_sanity_exit() since we've freed the memory */
 
     return;
 } /* adts_stack_destroy() */
