@@ -46,7 +46,7 @@ int32_t
 adts_bit_reverse( int32_t val );
 
 void
-utest_services_bits( void );
+utest_adts_bits( void );
 
 #endif /* _H_ADTS_BITS */
 
