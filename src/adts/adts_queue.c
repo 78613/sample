@@ -201,6 +201,32 @@ adts_queue_create( void )
  * #     # #    ##    #       #       #    #       #     #    #    #     #
  *  #####  #     #   ###      #       #    #######  #####     #     #####
 ******************************************************************************/
+
+
+/**
+ **************************************************************************
+ * \brief
+ *   Compile time structure sanity
+ *
+ * \details
+ *   Sanitize the abstract data type interface.  Enforced in header file so
+ *   as to catch improper usage/include by unauthorized callers.
+ *
+ **************************************************************************
+ */
+static void
+utest_queue_bytes( void )
+{
+    _Static_assert(sizeof(queue_t) < sizeof(adts_queue_t),
+        "Mismatch structs detected");
+
+    CDISPLAY("[%u]", sizeof(queue_t));
+    CDISPLAY("[%u]", sizeof(adts_queue_t));
+
+    return;
+} /* utest_queue_bytes() */
+
+
 /*
  ****************************************************************************
  * test control
