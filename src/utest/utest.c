@@ -4,6 +4,7 @@
 #include <adts_bits.h>
 #include <adts_time.h>
 #include <adts_stack.h>
+#include <adts_queue.h>
 #include <adts_hexdump.h>
 #include <adts_snapshot.h>
 #include <adts_services.h>
@@ -22,6 +23,7 @@ utest_control( void )
 //    utest_adts_bits();
 //    utest_adts_time();
     utest_adts_stack();
+    utest_adts_queue();
 //    utest_adts_hexdump();
 //    utest_adts_snapshot();
 

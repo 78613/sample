@@ -1,10 +1,12 @@
 
-#ifndef _H_ADTS_STACK
-#define _H_ADTS_STACK
+
+#ifndef _H_ADTS_QUEUE
+#define _H_ADTS_QUEUE
 
 #include <string.h>
 #include <stdbool.h>
 #include <inttypes.h>
+
 
 /**
  **************************************************************************
@@ -12,7 +14,7 @@
  *
  **************************************************************************
  */
-#define ADTS_STACK_BYTES (64)
+#define ADTS_QUEUE_BYTES (64)
 
 
 /**
@@ -22,8 +24,8 @@
  **************************************************************************
  */
 typedef struct {
-    char reserved[ ADTS_STACK_BYTES ];
-} adts_stack_t;
+    char reserved[ ADTS_QUEUE_BYTES ];
+} adts_queue_t;
 
 
 
@@ -35,31 +37,28 @@ typedef struct {
  **************************************************************************
  */
 bool
-adts_stack_is_empty( adts_stack_t *p_adts_stack );
+queue_is_empty( adts_queue_t *p_adts_queue );
 
 bool
-adts_stack_is_not_empty( adts_stack_t *p_adts_stack );
+queue_is_not_empty( adts_queue_t *p_adts_queue );
 
 void *
-adts_stack_peek( adts_stack_t *p_adts_stack );
-
-void *
-adts_stack_pop( adts_stack_t *p_adts_stack );
+queue_dequeue( adts_queue_t *p_adts_queue );
 
 int32_t
-adts_stack_push( adts_stack_t *p_adts_stack,
-                 void         *p_data,
-                 size_t        bytes );
+queue_enqueue( adts_queue_t *p_adts_queue,
+               void         *p_data );
+void
+queue_destroy( adts_queue_t *p_adts_queue );
+
+adts_queue_t *
+adts_queue_create( void );
 
 void
-adts_stack_destroy( adts_stack_t *p_adts_stack );
-
-adts_stack_t *
-adts_stack_create( size_t elems );
-
-void
-utest_adts_stack( void );
+utest_adts_queue( void );
 
 
-#endif /* _H_ADTS_STACK */
+
+#endif /* _H_ADTS_QUEUE */
+
 

@@ -4,6 +4,7 @@
 HFILES  += adts_bits.h
 HFILES  += adts_time.h
 HFILES  += adts_stack.h
+HFILES  += adts_queue.h
 HFILES  += adts_hexdump.h
 HFILES  += adts_snapshot.h
 HFILES  += adts_services.h
@@ -12,6 +13,7 @@ HFILES  += adts_services.h
 CFILES  += adts_bits.c
 CFILES  += adts_time.c
 CFILES  += adts_stack.c
+CFILES  += adts_queue.c
 CFILES  += adts_hexdump.c
 CFILES  += adts_snapshot.c
 
