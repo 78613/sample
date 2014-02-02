@@ -2,6 +2,7 @@
 
 # ======================================================
 HFILES  += adts_bits.h
+HFILES  += adts_heap.h
 HFILES  += adts_list.h
 HFILES  += adts_time.h
 HFILES  += adts_stack.h
@@ -12,6 +13,7 @@ HFILES  += adts_services.h
 
 # ======================================================
 CFILES  += adts_bits.c
+CFILES  += adts_heap.c
 CFILES  += adts_list.c
 CFILES  += adts_time.c
 CFILES  += adts_stack.c
