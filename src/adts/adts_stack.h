@@ -40,6 +40,9 @@ adts_stack_is_empty( adts_stack_t *p_adts_stack );
 bool
 adts_stack_is_not_empty( adts_stack_t *p_adts_stack );
 
+size_t
+adts_stack_entries( adts_stack_t *p_adts_stack );
+
 void *
 adts_stack_peek( adts_stack_t *p_adts_stack );
 
@@ -55,7 +58,7 @@ void
 adts_stack_destroy( adts_stack_t *p_adts_stack );
 
 adts_stack_t *
-adts_stack_create( size_t elems );
+adts_stack_create( void );
 
 void
 utest_adts_stack( void );

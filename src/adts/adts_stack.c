@@ -84,6 +84,19 @@ adts_stack_is_not_empty( adts_stack_t *p_adts_stack )
 } /* adts_stack_is_not_empty() */
 
 
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+size_t
+adts_stack_entries( adts_stack_t *p_adts_stack )
+{
+    stack_t *p_stack = (stack_t *) p_adts_stack;
+
+    return p_stack->elems_curr;
+} /* adts_stack_entries() */
+
 
 /*
  ****************************************************************************
@@ -144,6 +157,37 @@ exception:
 
 /*
  ****************************************************************************
+ * \details
+ *   elems_limit is initalized to 2 on creation, each resize operation is
+ *   simplistic as pow2.
+ ****************************************************************************
+ */
+static int32_t
+stack_resize( stack_t *p_stack )
+{
+    size_t        limit_new = p_stack->elems_limit * 2;
+    size_t        bytes     = limit_new * sizeof(*(p_stack->workspace));
+    int32_t       rc        = 0;
+    stack_elem_t *p_tmp     = NULL;
+
+    /* p_tmp used to handle error case and preserve the workspace */
+    p_tmp = realloc(p_stack->workspace, bytes);
+    if (NULL == p_tmp) {
+        rc = ENOMEM;
+        goto exception;
+    }
+
+    /* Set the new stack properties */
+    p_stack->workspace   = p_tmp;
+    p_stack->elems_limit = limit_new;
+
+exception:
+    return rc;
+} /* stack_resize() */
+
+
+/*
+ ****************************************************************************
  *
  ****************************************************************************
  */
@@ -164,8 +208,11 @@ adts_stack_push( adts_stack_t *p_adts_stack,
     assert(bytes);
 
     if (unlikely(p_stack->elems_curr == p_stack->elems_limit)) {
-        rc = ENOMEM;
-        goto exception;
+        /* Stack is full, perform dynamic resize operation */
+        rc = stack_resize(p_stack);
+        if (rc) {
+            goto exception;
+        }
     }
 
     offset         = p_stack->elems_curr;
@@ -210,8 +257,9 @@ adts_stack_destroy( adts_stack_t *p_adts_stack )
  ****************************************************************************
  */
 adts_stack_t *
-adts_stack_create( size_t elems )
+adts_stack_create( void )
 {
+    size_t        elems        = 2; /* init and allow for dynamic resize */
     int32_t       rc           = 0;
     stack_t      *p_stack      = NULL;
     stack_elem_t *p_elems      = NULL;
@@ -295,10 +343,9 @@ utest_control( void )
     {
         char          foo[64] = {0};
         char         *p_foo   = &(foo);
-        size_t        elems   = 256;
         adts_stack_t *p_stack = NULL;
 
-        p_stack = adts_stack_create(elems);
+        p_stack = adts_stack_create();
         (void) adts_stack_push(p_stack, p_foo, sizeof(*p_foo));
         (void) adts_stack_peek(p_stack);
         (void) adts_stack_pop(p_stack);
