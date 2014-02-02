@@ -88,6 +88,20 @@ adts_queue_is_not_empty( adts_queue_t *p_adts_queue )
 /*
  ****************************************************************************
  *
+ ****************************************************************************
+ */
+size_t
+adts_queue_entries( adts_queue_t *p_adts_queue )
+{
+    queue_t *p_queue = (queue_t *) p_adts_queue;
+
+    return p_queue->elems_curr;
+} /* adts_queue_entries() */
+
+
+/*
+ ****************************************************************************
+ *
  *
  ****************************************************************************
  */
@@ -102,7 +116,7 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
     adts_sanity_entry(p_sanity);
 
     /* Ensure we don't defer a null tail pointer */
-    if (p_queue->p_tail) {
+    if (likely(p_queue->p_tail)) {
         p_data = p_queue->p_tail->p_data;
     }else {
         goto exception;
@@ -120,6 +134,7 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
 
     /* Remove the node memory */
     free(p_node);
+    p_queue->elems_curr--;
 
 exception:
     adts_sanity_exit(p_sanity);
@@ -162,6 +177,8 @@ adts_queue_enqueue( adts_queue_t *p_adts_queue,
         p_queue->p_head->p_prev = p_node;
         p_queue->p_head         = p_node;
     }
+
+    p_queue->elems_curr++;
 
 exception:
     adts_sanity_exit(p_sanity);

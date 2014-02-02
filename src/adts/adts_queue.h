@@ -42,6 +42,9 @@ adts_queue_is_empty( adts_queue_t *p_adts_queue );
 bool
 adts_queue_is_not_empty( adts_queue_t *p_adts_queue );
 
+size_t
+adts_queue_entries( adts_queue_t *p_adts_queue );
+
 void *
 adts_queue_dequeue( adts_queue_t *p_adts_queue );
 
