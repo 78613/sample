@@ -14,7 +14,8 @@
  *
  **************************************************************************
  */
-#define ADTS_HEAP_BYTES (64)
+#define ADTS_HEAP_BYTES      (64)
+#define ADTS_HEAP_NODE_BYTES (32)
 
 
 /**
@@ -27,6 +28,10 @@ typedef enum {
     ADTS_HEAP_MIN = 0x11111111,
     ADTS_HEAP_MAX = 0x22222222,
 } adts_heap_type_t;
+
+typedef struct {
+    char reserved[ ADTS_HEAP_NODE_BYTES ];
+} adts_heap_node_t;
 
 typedef struct {
     char reserved[ ADTS_HEAP_BYTES ];
