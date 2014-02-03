@@ -27,10 +27,10 @@
  *
  ****************************************************************************
  */
-typedef struct {
-    void   *p_data;
-    size_t  bytes;
-} stack_elem_t;
+typedef enum {
+    STACK_GROW   = 0x22222222,
+    STACK_SHRINK = 0x55555555,
+} stack_resize_op_t;
 
 
 /*
@@ -39,9 +39,21 @@ typedef struct {
  ****************************************************************************
  */
 typedef struct {
+    void   *p_data;
+    size_t  bytes;
+} stack_node_t;
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+#define STACK_DEFAULT_ELEMS (4096)
+typedef struct {
     size_t        elems_curr;
     size_t        elems_limit;
-    stack_elem_t *workspace;
+    stack_node_t *workspace;
     adts_sanity_t sanity;
 } stack_t;
 
@@ -103,6 +115,38 @@ adts_stack_entries( adts_stack_t *p_adts_stack )
  *
  ****************************************************************************
  */
+void
+adts_stack_display( adts_stack_t *p_adts_stack )
+{
+    size_t         elems    = 0;
+    size_t         digits   = 0;
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    /* display the entire stack with dynamic width formatting */
+    elems  = adts_stack_entries(p_adts_stack);
+    digits = adts_digits_decimal(elems);
+    for (size_t idx = 0; idx < elems; idx++) {
+        printf("[%*d]  vaddr: %p  bytes: %d \n",
+                digits,
+                idx,
+                p_stack->workspace[idx].p_data,
+                p_stack->workspace[idx].bytes);
+    }
+
+    adts_sanity_exit(p_sanity);
+
+    return;
+} /* adts_stack_display() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 void *
 adts_stack_peek( adts_stack_t *p_adts_stack )
 {
@@ -111,8 +155,8 @@ adts_stack_peek( adts_stack_t *p_adts_stack )
 
     adts_sanity_entry(p_sanity);
 
-    int32_t       offset  = p_stack->elems_curr - 1;
-    stack_elem_t *p_elem  = &(p_stack->workspace[offset]);
+    int32_t       idx     = p_stack->elems_curr - 1;
+    stack_node_t *p_elem  = &(p_stack->workspace[idx]);
     void         *p_data  = p_elem->p_data;
 
     adts_sanity_exit(p_sanity);
@@ -123,52 +167,32 @@ adts_stack_peek( adts_stack_t *p_adts_stack )
 
 /*
  ****************************************************************************
+ * \details
+ *   Dynamically grow or shrink the stack workspace.  ADTS consumer is
+ *   responsible for serialization.
  *
  ****************************************************************************
  */
-void *
-adts_stack_pop( adts_stack_t *p_adts_stack )
-{
-    stack_t       *p_stack  = (stack_t *) p_adts_stack;
-    void          *p_data   = NULL;
-    int32_t        offset   = 0;
-    stack_elem_t  *p_elem   = NULL;
-    adts_sanity_t *p_sanity = &(p_stack->sanity);
-
-    adts_sanity_entry(p_sanity);
-
-    if (unlikely(0 == p_stack->elems_curr)) {
-        /* empty stack */
-        goto exception;
-    }
-
-    offset = p_stack->elems_curr - 1;
-    p_elem = &(p_stack->workspace[offset]);
-    p_stack->elems_curr--;
-
-    p_data = p_elem->p_data;
-    memset(p_elem, 0, sizeof(*p_elem));
-
-exception:
-    adts_sanity_exit(p_sanity);
-    return p_data;
-} /* adts_stack_pop() */
-
-
-/*
- ****************************************************************************
- * \details
- *   elems_limit is initalized to 2 on creation, each resize operation is
- *   simplistic as pow2.
- ****************************************************************************
- */
 static int32_t
-stack_resize( stack_t *p_stack )
+stack_resize( stack_t          *p_stack,
+              stack_resize_op_t op )
 {
     size_t        limit_new = p_stack->elems_limit * 2;
     size_t        bytes     = limit_new * sizeof(*(p_stack->workspace));
     int32_t       rc        = 0;
-    stack_elem_t *p_tmp     = NULL;
+    stack_node_t *p_tmp     = NULL;
+
+    switch (op) {
+        case STACK_GROW:
+            limit_new = p_stack->elems_limit * 2;
+            break;
+        case STACK_SHRINK:
+            limit_new = p_stack->elems_limit / 2;
+            break;
+        default:
+            /* invalid op */
+            assert(0);
+    }
 
     /* p_tmp used to handle error case and preserve the workspace */
     p_tmp = realloc(p_stack->workspace, bytes);
@@ -188,6 +212,82 @@ exception:
 
 /*
  ****************************************************************************
+ * \details
+ *   SIMPLE shrink candidacy logic to avoid excessive churn.
+ *
+ *   FIXME: as implemented below, there could be churn for:
+ *    - push
+ *    - limit == curr -> grow
+ *    - pop
+ *    - curr < limit / 2
+ *    - repeat
+ *
+ *    This is unlikely, but we'll circle back there to create a high / low
+ *    watermark model to avoid this churn scenario
+ *
+ ****************************************************************************
+ */
+static inline bool
+stack_resize_shrink_candidate( stack_t *p_stack )
+{
+    bool rc = false;
+
+    if (STACK_DEFAULT_ELEMS < p_stack->elems_curr) {
+        /* Stack has grown beyond the default */
+        if (p_stack->elems_curr < (p_stack->elems_limit / 2)) {
+            /* Stack is under utilized based on current allocation */
+            rc = true;
+        }
+    }
+
+    return rc;
+} /* stack_resize_shrink_candidate() */
+
+/*
+ ****************************************************************************
+ * \details
+ *   Consider adding dynamic memory reduction logic for memory efficiency
+ *
+ ****************************************************************************
+ */
+void *
+adts_stack_pop( adts_stack_t *p_adts_stack )
+{
+    stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    void          *p_data   = NULL;
+    int32_t        idx      = 0;
+    stack_node_t  *p_elem   = NULL;
+    adts_sanity_t *p_sanity = &(p_stack->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    if (unlikely(0 == p_stack->elems_curr)) {
+        /* empty stack */
+        goto exception;
+    }
+
+    if (stack_resize_shrink_candidate(p_stack)) {
+        int32_t rc = stack_resize(p_stack, STACK_SHRINK);
+        if (rc) {
+            goto exception;
+        }
+    }
+
+    idx    = p_stack->elems_curr - 1;
+    p_elem = &(p_stack->workspace[idx]);
+    p_stack->elems_curr--;
+
+    p_data = p_elem->p_data;
+    memset(p_elem, 0, sizeof(*p_elem));
+
+exception:
+    adts_sanity_exit(p_sanity);
+    return p_data;
+} /* adts_stack_pop() */
+
+
+/*
+ ****************************************************************************
  *
  ****************************************************************************
  */
@@ -197,8 +297,8 @@ adts_stack_push( adts_stack_t *p_adts_stack,
                  size_t        bytes )
 {
     int32_t        rc       = 0;
-    int32_t        offset   = 0;
-    stack_elem_t  *p_elem   = NULL;
+    int32_t        idx      = 0;
+    stack_node_t  *p_elem   = NULL;
     stack_t       *p_stack  = (stack_t *) p_adts_stack;
     adts_sanity_t *p_sanity = &(p_stack->sanity);
 
@@ -208,15 +308,14 @@ adts_stack_push( adts_stack_t *p_adts_stack,
     assert(bytes);
 
     if (unlikely(p_stack->elems_curr == p_stack->elems_limit)) {
-        /* Stack is full, perform dynamic resize operation */
-        rc = stack_resize(p_stack);
+        rc = stack_resize(p_stack, STACK_GROW);
         if (rc) {
             goto exception;
         }
     }
 
-    offset         = p_stack->elems_curr;
-    p_elem         = &(p_stack->workspace[offset]);
+    idx            = p_stack->elems_curr;
+    p_elem         = &(p_stack->workspace[idx]);
     p_elem->p_data = p_data;
     p_elem->bytes  = bytes;
 
@@ -259,10 +358,10 @@ adts_stack_destroy( adts_stack_t *p_adts_stack )
 adts_stack_t *
 adts_stack_create( void )
 {
-    size_t        elems        = 2; /* init and allow for dynamic resize */
+    size_t        elems        = STACK_DEFAULT_ELEMS;
     int32_t       rc           = 0;
     stack_t      *p_stack      = NULL;
-    stack_elem_t *p_elems      = NULL;
+    stack_node_t *p_elems      = NULL;
     adts_stack_t *p_adts_stack = NULL;
 
     p_adts_stack = calloc(1, sizeof(*p_adts_stack));
@@ -342,12 +441,12 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         char          foo[64] = {0};
-        char         *p_foo   = &(foo);
         adts_stack_t *p_stack = NULL;
 
         p_stack = adts_stack_create();
-        (void) adts_stack_push(p_stack, p_foo, sizeof(*p_foo));
+        (void) adts_stack_push(p_stack, &(foo), sizeof(foo));
         (void) adts_stack_peek(p_stack);
+        (void) adts_stack_display(p_stack);
         (void) adts_stack_pop(p_stack);
         (void) adts_stack_destroy(p_stack);
     }

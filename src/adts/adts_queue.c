@@ -27,11 +27,11 @@
  *
  ****************************************************************************
  */
-typedef struct queue_elem_s {
+typedef struct queue_node_s {
     void                *p_data;
-    struct queue_elem_s *p_prev;
-    struct queue_elem_s *p_next;
-} queue_elem_t;
+    struct queue_node_s *p_prev;
+    struct queue_node_s *p_next;
+} queue_node_t;
 
 
 /*
@@ -41,8 +41,8 @@ typedef struct queue_elem_s {
  */
 typedef struct {
     size_t        elems_curr;
-    queue_elem_t *p_head;
-    queue_elem_t *p_tail;
+    queue_node_t *p_head;
+    queue_node_t *p_tail;
     adts_sanity_t sanity;
 } queue_t;
 
@@ -110,7 +110,7 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
 {
     void          *p_data   = NULL;
     queue_t       *p_queue  = (queue_t *) p_adts_queue;
-    queue_elem_t  *p_node   = NULL;
+    queue_node_t  *p_node   = NULL;
     adts_sanity_t *p_sanity = &(p_queue->sanity);
 
     adts_sanity_entry(p_sanity);
@@ -154,7 +154,7 @@ adts_queue_enqueue( adts_queue_t *p_adts_queue,
 {
     int32_t        rc       = 0;
     queue_t       *p_queue  = (queue_t *) p_adts_queue;
-    queue_elem_t  *p_node   = NULL;
+    queue_node_t  *p_node   = NULL;
     adts_sanity_t *p_sanity = &(p_queue->sanity);
 
     adts_sanity_entry(p_sanity);
