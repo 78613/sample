@@ -29,6 +29,7 @@
  */
 typedef struct queue_node_s {
     void                *p_data;
+    size_t               bytes;
     struct queue_node_s *p_prev;
     struct queue_node_s *p_next;
 } queue_node_t;
@@ -102,6 +103,45 @@ adts_queue_entries( adts_queue_t *p_adts_queue )
 /*
  ****************************************************************************
  *
+ ****************************************************************************
+ */
+void
+adts_queue_display( adts_queue_t *p_adts_queue )
+{
+    size_t         idx      = 0;
+    size_t         elems    = 0;
+    size_t         digits   = 0;
+    queue_t       *p_queue  = (queue_t *) p_adts_queue;
+    queue_node_t  *p_tmp    = NULL;
+    adts_sanity_t *p_sanity = &(p_queue->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    /* display the entire queue with dynamic width formatting */
+    elems  = adts_queue_entries(p_adts_queue);
+    digits = adts_digits_decimal(elems);
+    p_tmp  = p_queue->p_head;
+    while (p_tmp) {
+        printf("[%*d]  node: %p  vaddr: %p  bytes: %d \n",
+                digits,
+                idx,
+                p_tmp,
+                p_tmp->p_data,
+                p_tmp->bytes);
+
+        idx++;
+        p_tmp = p_tmp->p_next;
+    }
+
+    adts_sanity_exit(p_sanity);
+
+    return;
+} /* adts_queue_display() */
+
+
+/*
+ ****************************************************************************
+ *
  *
  ****************************************************************************
  */
@@ -150,7 +190,8 @@ exception:
  */
 int32_t
 adts_queue_enqueue( adts_queue_t *p_adts_queue,
-                    void         *p_data )
+                    void         *p_data,
+                    size_t        bytes )
 {
     int32_t        rc       = 0;
     queue_t       *p_queue  = (queue_t *) p_adts_queue;
@@ -165,6 +206,7 @@ adts_queue_enqueue( adts_queue_t *p_adts_queue,
         goto exception;
     }
     p_node->p_data = p_data;
+    p_node->bytes  = bytes;
 
     if ((NULL == p_queue->p_head) &&
         (NULL == p_queue->p_tail)) {
@@ -275,7 +317,8 @@ utest_control( void )
         adts_queue_t *p_queue = NULL;
 
         p_queue = adts_queue_create();
-        adts_queue_enqueue(p_queue, -1);
+        adts_queue_enqueue(p_queue, -1, 0x11223344);
+        adts_queue_display(p_queue);
         (void) adts_queue_dequeue(p_queue);
         adts_queue_destroy(p_queue);
     }

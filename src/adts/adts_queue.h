@@ -45,12 +45,17 @@ adts_queue_is_not_empty( adts_queue_t *p_adts_queue );
 size_t
 adts_queue_entries( adts_queue_t *p_adts_queue );
 
+void
+adts_queue_display( adts_queue_t *p_adts_queue );
+
 void *
 adts_queue_dequeue( adts_queue_t *p_adts_queue );
 
 int32_t
 adts_queue_enqueue( adts_queue_t *p_adts_queue,
-                    void         *p_data );
+                    void         *p_data,
+                    size_t        bytes );
+
 void
 adts_queue_destroy( adts_queue_t *p_adts_queue );
 
