@@ -155,7 +155,7 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
 
     adts_sanity_entry(p_sanity);
 
-    /* Ensure we don't defer a null tail pointer */
+    /* Ensure we don't dereference a null tail pointer */
     if (likely(p_queue->p_tail)) {
         p_data = p_queue->p_tail->p_data;
     }else {
