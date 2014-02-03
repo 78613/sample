@@ -5,6 +5,7 @@
 #define _H_ADTS_HEXDUMP
 
 #include <stdint.h>
+#include <adts_snapshot.h>
 
 
 
