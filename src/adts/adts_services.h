@@ -41,6 +41,26 @@ int sched_getcpu(void);
 #endif
 
 
+/**
+ **************************************************************************
+ * \details
+ *   Count digits in decimal number
+ *
+ **************************************************************************
+ */
+static inline size_t
+adts_digits_decimal( int32_t val )
+{
+    size_t digits = 0;
+
+    while (val) {
+        val /= 10;
+        digits++;
+    }
+
+    return digits;
+} /* adts_digits_decimal() */
+
 
 #endif /* _H_ADTS_SERVICES */
 
