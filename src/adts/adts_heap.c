@@ -111,17 +111,17 @@ adts_heap_node_t *
 adts_heap_peek( adts_heap_t *p_adts_heap )
 {
     heap_t      *p_heap = (heap_t *) p_adts_heap;
-    size_t       idx    = adts_heap_entries(p_adts_heap) - 1;
-    heap_node_t *p_node = p_heap->workspace[idx];
+    heap_node_t *p_node = p_heap->workspace[0];
 
     return (adts_heap_node_t *) p_node;
 } /* adts_heap_peek() */
 
+
 /*
  ****************************************************************************
  * \details
- *   elems_limit is initalized to 2 on creation, each resize operation is
- *   simplistic as pow2.
+ *   FIXME: transition this over to a more flexible and efficient resize
+ *          algorithm like the one used for stack_resize
  ****************************************************************************
  */
 static int32_t
@@ -184,14 +184,14 @@ heap_node_swap_candidate( heap_t      *p_heap,
  ****************************************************************************
  */
 static void
-heap_push_bubble_up( heap_t *p_heap )
+heap_adjust_up( heap_t *p_heap )
 {
     size_t       elems    = adts_heap_entries(p_heap);
     size_t       idx      = elems - 1;
     heap_node_t *p_child  = NULL;
     heap_node_t *p_parent = NULL;
 
-    if (1 <= elems) {
+    if (unlikely(1 <= elems)) {
         /* Nothing to do here */
         goto exception;
     }
@@ -214,8 +214,41 @@ heap_push_bubble_up( heap_t *p_heap )
 
 exception:
     return;
-} /* heap_push_bubble_up() */
+} /* heap_adjust_up() */
 
+
+/*
+ ****************************************************************************
+ *
+ *  FIXME: Add resize capability
+ *
+ ****************************************************************************
+ */
+#if 0
+void *
+adts_heap_pop( adts_heap_t *p_adts_heap )
+{
+    void          *p_data   = NULL;
+    heap_t        *p_heap   = (heap_t *) p_adts_heap;
+    int32_t        rc       = 0;
+    heap_node_t   *p_node   = (heap_node_t *) p_adts_node_heap;
+    adts_sanity_t *p_sanity = &(p_heap->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    p_node = p_heap->workspace[0];
+    p_heap->elems_curr--;
+
+    for (;;) {
+
+    }
+
+
+exception:
+    adts_sanity_exit(p_sanity);
+    return p_node->p_data;
+} /* adts_heap_pop() */
+#endif
 
 /*
  ****************************************************************************
@@ -256,12 +289,12 @@ adts_heap_push( adts_heap_t       *p_adts_heap,
     p_node->key    = key;
 
     /* Insert this node at end of array */
-    idx = p_heap->elems_curr;
+    idx                    = p_heap->elems_curr;
     p_heap->workspace[idx] = p_node;
 
     p_heap->elems_curr++;
 
-    heap_push_bubble_up(p_heap);
+    heap_adjust_up(p_heap);
 
 exception:
     adts_sanity_exit(p_sanity);
