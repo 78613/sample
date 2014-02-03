@@ -230,11 +230,17 @@ exception:
 static inline bool
 stack_resize_shrink_candidate( stack_t *p_stack )
 {
-    bool rc = false;
+    bool   rc      = false;
+    size_t trigger = 0;
 
-    if (STACK_DEFAULT_ELEMS < p_stack->elems_curr) {
-        /* Stack has grown beyond the default */
-        if (p_stack->elems_curr < (p_stack->elems_limit / 2)) {
+    if (STACK_DEFAULT_ELEMS < p_stack->elems_limit) {
+        /* - stack has grown beyond the default,
+         * - to avoid resize churn, only make resize candidacy when
+         *   the utilization is lower than 50% of the next lowest level
+         *   from current level */
+        trigger  = p_stack->elems_limit / 2;
+        trigger /= 2;
+        if (p_stack->elems_curr < trigger) {
             /* Stack is under utilized based on current allocation */
             rc = true;
         }
