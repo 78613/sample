@@ -46,10 +46,24 @@ typedef struct {
 
 /*
  ****************************************************************************
+ * \details
+ *   The heap workspace is an array of stack_node_t, thus reserve as:
+ *      32bit:
+ *        512 entries = pagesize / stack_node_t size
+ *
+ *      64bit:
+ *        256  entries = pagesize / stack_node_t size
  *
  ****************************************************************************
  */
-#define STACK_DEFAULT_ELEMS (4096)
+#define STACK_DEFAULT_ELEMS (4096 / sizeof(stack_node_t))
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 typedef struct {
     size_t        elems_curr;
     size_t        elems_limit;

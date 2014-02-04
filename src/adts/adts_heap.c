@@ -46,10 +46,26 @@ typedef struct {
 
 /*
  ****************************************************************************
+ * \details
+ *   The heap workspace is an array of pointers, thus reserve as:
+ *      32bit:
+ *        1024 entries = pagesize / ptr size
+ *
+ *      64bit:
+ *        512  entries = pagesize / ptr size
+ *
+ *   which is 0.5 4k page in 32bit mode and 1 4k page in 64bit mode.
  *
  ****************************************************************************
  */
-#define HEAP_DEFAULT_ELEMS (4096)
+#define HEAP_DEFAULT_ELEMS (4096 / sizeof(void *))
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 typedef struct {
     size_t            elems_curr;
     size_t            elems_limit;
