@@ -73,7 +73,7 @@ typedef struct {
 /*
  ****************************************************************************
  * \details
- *   Dynamically grow or shrink the stack workspace.  ADTS consumer is
+ *   Dynamically grow or shrink the workspace.  ADTS consumer is
  *   responsible for serialization.
  *
  ****************************************************************************
@@ -119,16 +119,6 @@ exception:
  ****************************************************************************
  * \details
  *   SIMPLE shrink candidacy logic to avoid excessive churn.
- *
- *   FIXME: as implemented below, there could be churn for:
- *    - push
- *    - limit == curr -> grow
- *    - pop
- *    - curr < limit / 2
- *    - repeat
- *
- *    This is unlikely, but we'll circle back there to create a high / low
- *    watermark model to avoid this churn scenario
  *
  ****************************************************************************
  */
@@ -268,16 +258,14 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
 
     adts_sanity_entry(p_sanity);
 
-    if (unlikely(0 == p_stack->elems_curr)) {
+    if (unlikely(0 >= p_stack->elems_curr)) {
         /* empty stack */
         goto exception;
     }
 
     if (stack_resize_shrink_candidate(p_stack)) {
-        int32_t rc = stack_resize(p_stack, STACK_SHRINK);
-        if (rc) {
-            goto exception;
-        }
+        /* Do not error out.  Try again on next pop operation */
+        (void) stack_resize(p_stack, STACK_SHRINK);
     }
 
     idx    = p_stack->elems_curr - 1;
