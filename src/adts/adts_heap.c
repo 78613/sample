@@ -64,101 +64,6 @@ typedef struct {
 
 /*
  ****************************************************************************
- *
- ****************************************************************************
- */
-bool
-adts_heap_is_empty( adts_heap_t *p_adts_heap )
-{
-    heap_t *p_heap = (heap_t *) p_adts_heap;
-
-    return (0 >= p_heap->elems_curr);
-} /* adts_heap_is_empty() */
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-bool
-adts_heap_is_not_empty( adts_heap_t *p_adts_heap )
-{
-    return !(adts_heap_is_empty(p_adts_heap));
-} /* adts_heap_is_not_empty() */
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-size_t
-adts_heap_entries( adts_heap_t *p_adts_heap )
-{
-    heap_t *p_heap = (heap_t *) p_adts_heap;
-
-    return p_heap->elems_curr;
-} /* adts_heap_entries() */
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-void
-adts_heap_display( adts_heap_t *p_adts_heap )
-{
-    size_t         elems    = 0;
-    size_t         digits   = 0;
-    heap_t        *p_heap   = (heap_t *) p_adts_heap;
-    adts_sanity_t *p_sanity = &(p_heap->sanity);
-
-    adts_sanity_entry(p_sanity);
-
-    /* display the entire heap with dynamic width formatting */
-    elems  = p_heap->elems_curr;
-    digits = adts_digits_decimal(elems);
-
-    /* The heap implementation uses an array representation of a binary tree
-     * therefore we simply perform a display / decode of each entry as array
-     * format.  Alternately we can perform a BFS display as future extension */
-    for (size_t idx = 0; idx < elems; idx++) {
-        heap_node_t *p_node = p_heap->workspace[idx];
-        printf("[%*d]  node: %p  vaddr: %p  bytes: %d  key: 0x%016llx %-lld \n",
-                digits,
-                idx,
-                p_node,
-                p_node->p_data,
-                p_node->bytes,
-                p_node->key,
-                p_node->key );
-    }
-
-    adts_sanity_exit(p_sanity);
-
-    return;
-} /* adts_heap_display() */
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-adts_heap_node_t *
-adts_heap_peek( adts_heap_t *p_adts_heap )
-{
-    heap_t      *p_heap = (heap_t *) p_adts_heap;
-    heap_node_t *p_node = p_heap->workspace[0];
-
-    return (adts_heap_node_t *) p_node;
-} /* adts_heap_peek() */
-
-
-/*
- ****************************************************************************
  * \details
  *   FIXME: transition this over to a more flexible and efficient resize
  *          algorithm like the one used for stack_resize
@@ -314,6 +219,101 @@ heap_adjust_down( heap_t *p_heap )
 exception:
     return;
 } /* heap_adjust_down() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_heap_is_empty( adts_heap_t *p_adts_heap )
+{
+    heap_t *p_heap = (heap_t *) p_adts_heap;
+
+    return (0 >= p_heap->elems_curr);
+} /* adts_heap_is_empty() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_heap_is_not_empty( adts_heap_t *p_adts_heap )
+{
+    return !(adts_heap_is_empty(p_adts_heap));
+} /* adts_heap_is_not_empty() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+size_t
+adts_heap_entries( adts_heap_t *p_adts_heap )
+{
+    heap_t *p_heap = (heap_t *) p_adts_heap;
+
+    return p_heap->elems_curr;
+} /* adts_heap_entries() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+void
+adts_heap_display( adts_heap_t *p_adts_heap )
+{
+    size_t         elems    = 0;
+    size_t         digits   = 0;
+    heap_t        *p_heap   = (heap_t *) p_adts_heap;
+    adts_sanity_t *p_sanity = &(p_heap->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    /* display the entire heap with dynamic width formatting */
+    elems  = p_heap->elems_curr;
+    digits = adts_digits_decimal(elems);
+
+    /* The heap implementation uses an array representation of a binary tree
+     * therefore we simply perform a display / decode of each entry as array
+     * format.  Alternately we can perform a BFS display as future extension */
+    for (size_t idx = 0; idx < elems; idx++) {
+        heap_node_t *p_node = p_heap->workspace[idx];
+        printf("[%*d]  node: %p  vaddr: %p  bytes: %d  key: 0x%016llx %-lld \n",
+                digits,
+                idx,
+                p_node,
+                p_node->p_data,
+                p_node->bytes,
+                p_node->key,
+                p_node->key );
+    }
+
+    adts_sanity_exit(p_sanity);
+
+    return;
+} /* adts_heap_display() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+adts_heap_node_t *
+adts_heap_peek( adts_heap_t *p_adts_heap )
+{
+    heap_t      *p_heap = (heap_t *) p_adts_heap;
+    heap_node_t *p_node = p_heap->workspace[0];
+
+    return (adts_heap_node_t *) p_node;
+} /* adts_heap_peek() */
 
 
 /*
