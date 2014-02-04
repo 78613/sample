@@ -281,16 +281,12 @@ heap_adjust_down( heap_t *p_heap )
         heap_node_t  *p_tmp    = NULL;
         heap_node_t  *p_left   = NULL;
         heap_node_t  *p_right  = NULL;
-        heap_node_t  *p_parent = NULL;
         const size_t  left     = (idx * 2) + 1;
         const size_t  right    = (idx * 2) + 2;
 
-        p_parent = p_heap->workspace[idx];
         p_left   = (left  < elems) ? p_heap->workspace[left]  : NULL;
         p_right  = (right < elems) ? p_heap->workspace[right] : NULL;
-
-        if (p_left && p_right) {
-            /* Both children present. Pick the appropriate child to swap */
+        if (likely(p_left && p_right)) {
             switch (op) {
                 case ADTS_HEAP_MIN:
                     idxc = (p_left->key < p_right->key) ? left : right;
@@ -302,10 +298,8 @@ heap_adjust_down( heap_t *p_heap )
                     assert(0); /* sanity */
             }
         }else if (p_left) {
-            /* Only left child is present */
             idxc = left;
         }else {
-            /* No children available */
             goto exception;
         }
 
