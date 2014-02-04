@@ -27,6 +27,16 @@
  *
  ****************************************************************************
  */
+typedef enum {
+    HEAP_GROW   = 0x22222222,
+    HEAP_SHRINK = 0x55555555,
+} heap_resize_op_t;
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 typedef struct {
     void   *p_data; /**< consumer datapointer */
     size_t  bytes;  /**< data bytes for p_data */
@@ -65,17 +75,31 @@ typedef struct {
 /*
  ****************************************************************************
  * \details
- *   FIXME: transition this over to a more flexible and efficient resize
- *          algorithm like the one used for stack_resize
+ *   Dynamically grow or shrink the workspace.  ADTS consumer is
+ *   responsible for serialization.
+*
  ****************************************************************************
  */
 static int32_t
-heap_resize( heap_t *p_heap )
+heap_resize( heap_t           *p_heap,
+             heap_resize_op_t  op )
 {
-    size_t       limit_new = p_heap->elems_limit * 2;
-    size_t       bytes     = limit_new * sizeof(p_heap->workspace);
-    int32_t      rc        = 0;
-    heap_node_t *p_tmp     = NULL;
+    size_t        limit_new = p_heap->elems_limit * 2;
+    size_t        bytes     = limit_new * sizeof(*(p_heap->workspace));
+    int32_t       rc        = 0;
+    heap_node_t *p_tmp      = NULL;
+
+    switch (op) {
+        case HEAP_GROW:
+            limit_new = p_heap->elems_limit * 2;
+            break;
+        case HEAP_SHRINK:
+            limit_new = p_heap->elems_limit / 2;
+            break;
+        default:
+            /* invalid op */
+            assert(0);
+    }
 
     /* p_tmp used to handle error case and preserve the workspace */
     p_tmp = realloc(p_heap->workspace, bytes);
@@ -91,6 +115,36 @@ heap_resize( heap_t *p_heap )
 exception:
     return rc;
 } /* heap_resize() */
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   SIMPLE shrink candidacy logic to avoid excessive churn.
+ *
+ ****************************************************************************
+ */
+static inline bool
+heap_resize_shrink_candidate( heap_t *p_heap )
+{
+    bool   rc      = false;
+    size_t trigger = 0;
+
+    if (HEAP_DEFAULT_ELEMS < p_heap->elems_limit) {
+        /* - heap has grown beyond the default,
+         * - to avoid resize churn, only make resize candidacy when
+         *   the utilization is lower than 50% of the next lowest level
+         *   from current level */
+        trigger  = p_heap->elems_limit / 2;
+        trigger /= 2;
+        if (p_heap->elems_curr < trigger) {
+            /* Stack is under utilized based on current allocation */
+            rc = true;
+        }
+    }
+
+    return rc;
+} /* heap_resize_shrink_candidate() */
 
 
 /*
@@ -326,19 +380,22 @@ adts_heap_peek( adts_heap_t *p_adts_heap )
 adts_heap_node_t *
 adts_heap_pop( adts_heap_t *p_adts_heap )
 {
-    void          *p_data   = NULL;
     size_t         idx      = 0;
     heap_t        *p_heap   = (heap_t *) p_adts_heap;
-    int32_t        rc       = 0;
     heap_node_t   *p_node   = NULL;
     const size_t   elems    = p_heap->elems_curr;
     adts_sanity_t *p_sanity = &(p_heap->sanity);
 
     adts_sanity_entry(p_sanity);
 
-    if (0 >= elems) {
+    if (unlikely(0 >= elems)) {
         /* empty heap */
         goto exception;
+    }
+
+    if (heap_resize_shrink_candidate(p_heap)) {
+        /* Do not error out.  Try again on next pop operation */
+        (void) heap_resize(p_heap, HEAP_SHRINK);
     }
 
     /* Pop root from tree, and overwrite root with last node in tree */
@@ -382,7 +439,7 @@ adts_heap_push( adts_heap_t       *p_adts_heap,
 
     if (unlikely(p_heap->elems_curr == p_heap->elems_limit)) {
         /* Full, perform dynamic resize operation */
-        rc = heap_resize(p_heap);
+        rc = heap_resize(p_heap, HEAP_GROW);
         if (rc) {
             goto exception;
         }
