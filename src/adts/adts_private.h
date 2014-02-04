@@ -50,21 +50,21 @@ typedef struct {
  **************************************************************************
  */
 static inline void
-adts_sanity_exit( adts_sanity_t *p_snt )
+adts_sanity_exit( adts_sanity_t *p_sanity )
 {
-    p_snt->busy--;
+    p_sanity->busy--;
 
     return;
 } /* adts_sanity_exit() */
 
 static inline void
-adts_sanity_entry( adts_sanity_t *p_snt )
+adts_sanity_entry( adts_sanity_t *p_sanity )
 {
     /* if !0 on entry, then there's clearly a serialization error on
      * behalf of the ADTS consumer */
-    assert(0 == p_snt->busy);
+    assert(0 == p_sanity->busy);
 
-    p_snt->busy++;
+    p_sanity->busy++;
     /* memory barriers are a better solution to volatile, but... still need
      * to investigate how to portably and efficiently pull this capability
      * into the adts shared library */
