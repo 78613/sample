@@ -44,6 +44,36 @@ typedef struct {
  *
  **************************************************************************
  */
+bool
+adts_heap_is_empty( adts_heap_t *p_adts_heap );
+
+bool
+adts_heap_is_not_empty( adts_heap_t *p_adts_heap );
+
+size_t
+adts_heap_entries( adts_heap_t *p_adts_heap );
+
+void
+adts_heap_display( adts_heap_t *p_adts_heap );
+
+adts_heap_node_t *
+adts_heap_peek( adts_heap_t *p_adts_heap );
+
+adts_heap_node_t *
+adts_heap_pop( adts_heap_t *p_adts_heap );
+
+int32_t
+adts_heap_push( adts_heap_t       *p_adts_heap,
+                adts_heap_node_t  *p_adts_node_heap,
+                void              *p_data,
+                size_t             bytes,
+                int64_t            key );
+void
+adts_heap_destroy( adts_heap_t *p_adts_heap );
+
+adts_heap_t *
+adts_heap_create( adts_heap_type_t type );
+
 void
 utest_adts_heap( void );
 

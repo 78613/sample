@@ -72,7 +72,7 @@ adts_heap_is_empty( adts_heap_t *p_adts_heap )
 {
     heap_t *p_heap = (heap_t *) p_adts_heap;
 
-    return (0 == p_heap->elems_curr);
+    return (0 >= p_heap->elems_curr);
 } /* adts_heap_is_empty() */
 
 
@@ -100,6 +100,46 @@ adts_heap_entries( adts_heap_t *p_adts_heap )
 
     return p_heap->elems_curr;
 } /* adts_heap_entries() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+void
+adts_heap_display( adts_heap_t *p_adts_heap )
+{
+    size_t         elems    = 0;
+    size_t         digits   = 0;
+    heap_t        *p_heap   = (heap_t *) p_adts_heap;
+    adts_sanity_t *p_sanity = &(p_heap->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    /* display the entire heap with dynamic width formatting */
+    elems  = p_heap->elems_curr;
+    digits = adts_digits_decimal(elems);
+
+    /* The heap implementation uses an array representation of a binary tree
+     * therefore we simply perform a display / decode of each entry as array
+     * format.  Alternately we can perform a BFS display as future extension */
+    for (size_t idx = 0; idx < elems; idx++) {
+        heap_node_t *p_node = p_heap->workspace[idx];
+        printf("[%*d]  node: %p  vaddr: %p  bytes: %d  key: 0x%016llx %-lld \n",
+                digits,
+                idx,
+                p_node,
+                p_node->p_data,
+                p_node->bytes,
+                p_node->key,
+                p_node->key );
+    }
+
+    adts_sanity_exit(p_sanity);
+
+    return;
+} /* adts_heap_display() */
 
 
 /*
@@ -186,19 +226,19 @@ heap_node_swap_candidate( heap_t      *p_heap,
 static void
 heap_adjust_up( heap_t *p_heap )
 {
-    size_t       elems    = adts_heap_entries(p_heap);
+    size_t       elems    = p_heap->elems_curr;
     size_t       idx      = elems - 1;
     heap_node_t *p_child  = NULL;
     heap_node_t *p_parent = NULL;
 
-    if (unlikely(1 <= elems)) {
+    if (unlikely(1 >= elems)) {
         /* Nothing to do here */
         goto exception;
     }
 
     p_child  = p_heap->workspace[idx];
     p_parent = p_heap->workspace[idx/2];
-    while ((1 < idx) && heap_node_swap_candidate(p_heap, p_parent, p_child)) {
+    while ((1 <= idx) && heap_node_swap_candidate(p_heap, p_parent, p_child)) {
         heap_node_t *p_tmp = NULL;
 
         /* swap parent and child array entries */
@@ -220,35 +260,106 @@ exception:
 /*
  ****************************************************************************
  *
- *  FIXME: Add resize capability
  *
  ****************************************************************************
  */
-#if 0
-void *
+static void
+heap_adjust_down( heap_t *p_heap )
+{
+    size_t           idx   = 0;
+    int32_t          rc    = 0;
+    const size_t     elems = p_heap->elems_curr;
+    adts_heap_type_t op    = p_heap->type;
+
+    if (1 >= elems) {
+        /* nothing to do here */
+        goto exception;
+    }
+
+    for (;;) {
+        size_t        idxc     = 0;      /* child index */
+        heap_node_t  *p_tmp    = NULL;
+        heap_node_t  *p_left   = NULL;
+        heap_node_t  *p_right  = NULL;
+        heap_node_t  *p_parent = NULL;
+        const size_t  left     = (idx * 2) + 1;
+        const size_t  right    = (idx * 2) + 2;
+
+        p_parent = p_heap->workspace[idx];
+        p_left   = (left  < elems) ? p_heap->workspace[left]  : NULL;
+        p_right  = (right < elems) ? p_heap->workspace[right] : NULL;
+
+        if (p_left && p_right) {
+            /* Both children present. Pick the appropriate child to swap */
+            switch (op) {
+                case ADTS_HEAP_MIN:
+                    idxc = (p_left->key < p_right->key) ? left : right;
+                    break;
+                case ADTS_HEAP_MAX:
+                    idxc = (p_left->key > p_right->key) ? left : right;
+                    break;
+                default:
+                    assert(0); /* sanity */
+            }
+        }else if (p_left) {
+            /* Only left child is present */
+            idxc = left;
+        }else {
+            /* No children available */
+            goto exception;
+        }
+
+        /* swap parent and child array entries */
+        p_tmp                   = p_heap->workspace[idx];
+        p_heap->workspace[idx]  = p_heap->workspace[idxc];
+        p_heap->workspace[idxc] = p_tmp;
+
+        idx = idxc;
+    }
+
+exception:
+    return;
+} /* heap_adjust_down() */
+
+
+/*
+ ****************************************************************************
+ *
+ *  FIXME: Add resize shrink capability
+ *
+ ****************************************************************************
+ */
+adts_heap_node_t *
 adts_heap_pop( adts_heap_t *p_adts_heap )
 {
     void          *p_data   = NULL;
+    size_t         idx      = 0;
     heap_t        *p_heap   = (heap_t *) p_adts_heap;
     int32_t        rc       = 0;
-    heap_node_t   *p_node   = (heap_node_t *) p_adts_node_heap;
+    heap_node_t   *p_node   = NULL;
+    const size_t   elems    = p_heap->elems_curr;
     adts_sanity_t *p_sanity = &(p_heap->sanity);
 
     adts_sanity_entry(p_sanity);
 
-    p_node = p_heap->workspace[0];
-    p_heap->elems_curr--;
-
-    for (;;) {
-
+    if (0 >= elems) {
+        /* empty heap */
+        goto exception;
     }
 
+    /* Pop root from tree, and overwrite root with last node in tree */
+    p_node               = p_heap->workspace[0];
+    idx                  = elems - 1;
+    p_heap->workspace[0] = p_heap->workspace[idx];
+
+    p_heap->elems_curr--;
+
+    heap_adjust_down(p_heap);
 
 exception:
     adts_sanity_exit(p_sanity);
-    return p_node->p_data;
+    return p_node;
 } /* adts_heap_pop() */
-#endif
 
 /*
  ****************************************************************************
@@ -427,14 +538,141 @@ utest_heap_bytes( void )
 static void
 utest_control( void )
 {
+    #define UTEST_ELEMS (32)
+    size_t           key[]               = {40,18,20,15,13,9,19,1,3,8};
+    adts_heap_node_t node[ UTEST_ELEMS ] = {0};
+    size_t           elems               = sizeof(key) / sizeof(key[0]);
+
     CDISPLAY("=========================================================");
     {
+        CDISPLAY("Test: Create -> Detroy");
+
         adts_heap_t      *p_heap = NULL;
         adts_heap_type_t  type   = ADTS_HEAP_MIN;
 
         p_heap = adts_heap_create(type);
         (void) adts_heap_destroy(p_heap);
     }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: display empty heap");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MIN;
+
+        p_heap = adts_heap_create(type);
+        adts_heap_display(p_heap);
+        (void) adts_heap_destroy(p_heap);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: pop empty heap");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MIN;
+
+        p_heap = adts_heap_create(type);
+        adts_heap_pop(p_heap);
+        (void) adts_heap_destroy(p_heap);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: MAX heap push");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MAX;
+
+        printf("\n");
+        printf("\n");
+        p_heap = adts_heap_create(type);
+        for (size_t i = 0; i < elems; i++) {
+            CDISPLAY("Add: -------------------------------------------------");
+            adts_heap_push(p_heap, &(node[i]), -1, sizeof(key[i]), key[i]);
+            adts_heap_display(p_heap);
+            printf("\n");
+        }
+        (void) adts_heap_destroy(p_heap);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: MIN heap push");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MIN;
+
+        printf("\n");
+        printf("\n");
+        p_heap = adts_heap_create(type);
+        for (size_t i = 0; i < elems; i++) {
+            CDISPLAY("Add: -------------------------------------------------");
+            adts_heap_push(p_heap, &(node[i]), -1, sizeof(key[i]), key[i]);
+            adts_heap_display(p_heap);
+            printf("\n");
+        }
+        (void) adts_heap_destroy(p_heap);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: MAX heap pop");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MAX;
+
+        p_heap = adts_heap_create(type);
+        for (size_t i = 0; i < elems; i++) {
+            CDISPLAY("Add: -------------------------------------------------");
+            adts_heap_push(p_heap, &(node[i]), -1, sizeof(key[i]), key[i]);
+        }
+        adts_heap_display(p_heap);
+
+        printf("\n");
+        printf("\n");
+        for (size_t i = elems; i > 0; i--) {
+            CDISPLAY("Remove: ----------------------------------------------");
+            adts_heap_pop(p_heap);
+            adts_heap_display(p_heap);
+            printf("\n");
+
+        }
+
+        (void) adts_heap_destroy(p_heap);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: MIN heap pop");
+
+        adts_heap_t      *p_heap = NULL;
+        adts_heap_type_t  type   = ADTS_HEAP_MIN;
+
+        p_heap = adts_heap_create(type);
+        for (size_t i = 0; i < elems; i++) {
+            CDISPLAY("Add: -------------------------------------------------");
+            adts_heap_push(p_heap, &(node[i]), -1, sizeof(key[i]), key[i]);
+        }
+        adts_heap_display(p_heap);
+
+        printf("\n");
+        printf("\n");
+        for (size_t i = elems; i > 0; i--) {
+            CDISPLAY("Remove: ----------------------------------------------");
+            adts_heap_pop(p_heap);
+            adts_heap_display(p_heap);
+            printf("\n");
+
+        }
+
+        (void) adts_heap_destroy(p_heap);
+    }
+
+
+
+
 
 
     return;
