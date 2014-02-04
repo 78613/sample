@@ -128,7 +128,6 @@ utest_control( void )
 
     }
 
-
     return;
 } /* utest_control() */
 
@@ -143,7 +142,6 @@ utest_control( void )
 void
 utest_adts_list( void )
 {
-
     utest_control();
 
     return;

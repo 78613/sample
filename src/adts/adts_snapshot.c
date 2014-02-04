@@ -178,7 +178,6 @@ utest_control( void )
         adts_snapshot_display(p_adt_snap);
     }
 
-
     return;
 } /* utest_control() */
 

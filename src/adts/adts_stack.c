@@ -461,7 +461,6 @@ utest_control( void )
         (void) adts_stack_destroy(p_stack);
     }
 
-
     return;
 } /* utest_control() */
 

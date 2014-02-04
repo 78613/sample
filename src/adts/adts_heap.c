@@ -737,11 +737,6 @@ utest_control( void )
         (void) adts_heap_destroy(p_heap);
     }
 
-
-
-
-
-
     return;
 } /* utest_control() */
 
@@ -756,7 +751,6 @@ utest_control( void )
 void
 utest_adts_heap( void )
 {
-
     utest_control();
 
     return;

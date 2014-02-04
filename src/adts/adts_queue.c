@@ -323,7 +323,6 @@ utest_control( void )
         adts_queue_destroy(p_queue);
     }
 
-
     return;
 } /* utest_control() */
 
@@ -338,7 +337,6 @@ utest_control( void )
 void
 utest_adts_queue( void )
 {
-
     utest_control();
 
     return;
