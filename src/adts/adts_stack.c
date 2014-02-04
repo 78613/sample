@@ -281,6 +281,7 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
 
     idx    = p_stack->elems_curr - 1;
     p_elem = &(p_stack->workspace[idx]);
+
     p_stack->elems_curr--;
 
     p_data = p_elem->p_data;
