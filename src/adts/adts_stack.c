@@ -72,6 +72,91 @@ typedef struct {
 
 /*
  ****************************************************************************
+ * \details
+ *   Dynamically grow or shrink the stack workspace.  ADTS consumer is
+ *   responsible for serialization.
+ *
+ ****************************************************************************
+ */
+static int32_t
+stack_resize( stack_t          *p_stack,
+              stack_resize_op_t op )
+{
+    size_t        limit_new = p_stack->elems_limit * 2;
+    size_t        bytes     = limit_new * sizeof(*(p_stack->workspace));
+    int32_t       rc        = 0;
+    stack_node_t *p_tmp     = NULL;
+
+    switch (op) {
+        case STACK_GROW:
+            limit_new = p_stack->elems_limit * 2;
+            break;
+        case STACK_SHRINK:
+            limit_new = p_stack->elems_limit / 2;
+            break;
+        default:
+            /* invalid op */
+            assert(0);
+    }
+
+    /* p_tmp used to handle error case and preserve the workspace */
+    p_tmp = realloc(p_stack->workspace, bytes);
+    if (NULL == p_tmp) {
+        rc = ENOMEM;
+        goto exception;
+    }
+
+    /* Set the new stack properties */
+    p_stack->workspace   = p_tmp;
+    p_stack->elems_limit = limit_new;
+
+exception:
+    return rc;
+} /* stack_resize() */
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   SIMPLE shrink candidacy logic to avoid excessive churn.
+ *
+ *   FIXME: as implemented below, there could be churn for:
+ *    - push
+ *    - limit == curr -> grow
+ *    - pop
+ *    - curr < limit / 2
+ *    - repeat
+ *
+ *    This is unlikely, but we'll circle back there to create a high / low
+ *    watermark model to avoid this churn scenario
+ *
+ ****************************************************************************
+ */
+static inline bool
+stack_resize_shrink_candidate( stack_t *p_stack )
+{
+    bool   rc      = false;
+    size_t trigger = 0;
+
+    if (STACK_DEFAULT_ELEMS < p_stack->elems_limit) {
+        /* - stack has grown beyond the default,
+         * - to avoid resize churn, only make resize candidacy when
+         *   the utilization is lower than 50% of the next lowest level
+         *   from current level */
+        trigger  = p_stack->elems_limit / 2;
+        trigger /= 2;
+        if (p_stack->elems_curr < trigger) {
+            /* Stack is under utilized based on current allocation */
+            rc = true;
+        }
+    }
+
+    return rc;
+} /* stack_resize_shrink_candidate() */
+
+
+/*
+ ****************************************************************************
  *
  ****************************************************************************
  */
@@ -164,90 +249,6 @@ adts_stack_peek( adts_stack_t *p_adts_stack )
     return p_data;
 } /* adts_stack_peek() */
 
-
-/*
- ****************************************************************************
- * \details
- *   Dynamically grow or shrink the stack workspace.  ADTS consumer is
- *   responsible for serialization.
- *
- ****************************************************************************
- */
-static int32_t
-stack_resize( stack_t          *p_stack,
-              stack_resize_op_t op )
-{
-    size_t        limit_new = p_stack->elems_limit * 2;
-    size_t        bytes     = limit_new * sizeof(*(p_stack->workspace));
-    int32_t       rc        = 0;
-    stack_node_t *p_tmp     = NULL;
-
-    switch (op) {
-        case STACK_GROW:
-            limit_new = p_stack->elems_limit * 2;
-            break;
-        case STACK_SHRINK:
-            limit_new = p_stack->elems_limit / 2;
-            break;
-        default:
-            /* invalid op */
-            assert(0);
-    }
-
-    /* p_tmp used to handle error case and preserve the workspace */
-    p_tmp = realloc(p_stack->workspace, bytes);
-    if (NULL == p_tmp) {
-        rc = ENOMEM;
-        goto exception;
-    }
-
-    /* Set the new stack properties */
-    p_stack->workspace   = p_tmp;
-    p_stack->elems_limit = limit_new;
-
-exception:
-    return rc;
-} /* stack_resize() */
-
-
-/*
- ****************************************************************************
- * \details
- *   SIMPLE shrink candidacy logic to avoid excessive churn.
- *
- *   FIXME: as implemented below, there could be churn for:
- *    - push
- *    - limit == curr -> grow
- *    - pop
- *    - curr < limit / 2
- *    - repeat
- *
- *    This is unlikely, but we'll circle back there to create a high / low
- *    watermark model to avoid this churn scenario
- *
- ****************************************************************************
- */
-static inline bool
-stack_resize_shrink_candidate( stack_t *p_stack )
-{
-    bool   rc      = false;
-    size_t trigger = 0;
-
-    if (STACK_DEFAULT_ELEMS < p_stack->elems_limit) {
-        /* - stack has grown beyond the default,
-         * - to avoid resize churn, only make resize candidacy when
-         *   the utilization is lower than 50% of the next lowest level
-         *   from current level */
-        trigger  = p_stack->elems_limit / 2;
-        trigger /= 2;
-        if (p_stack->elems_curr < trigger) {
-            /* Stack is under utilized based on current allocation */
-            rc = true;
-        }
-    }
-
-    return rc;
-} /* stack_resize_shrink_candidate() */
 
 /*
  ****************************************************************************
