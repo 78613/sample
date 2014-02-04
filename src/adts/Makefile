@@ -2,8 +2,10 @@
 
 # ======================================================
 HFILES  += adts_bits.h
+HFILES  += adts_hash.h
 HFILES  += adts_heap.h
 HFILES  += adts_list.h
+HFILES  += adts_math.h
 HFILES  += adts_time.h
 HFILES  += adts_stack.h
 HFILES  += adts_queue.h
@@ -13,8 +15,10 @@ HFILES  += adts_services.h
 
 # ======================================================
 CFILES  += adts_bits.c
+CFILES  += adts_hash.c
 CFILES  += adts_heap.c
 CFILES  += adts_list.c
+CFILES  += adts_math.c
 CFILES  += adts_time.c
 CFILES  += adts_stack.c
 CFILES  += adts_queue.c
