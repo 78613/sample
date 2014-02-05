@@ -8,8 +8,8 @@
 #include <inttypes.h>
 
 /* Toolbox */
-#include <adts_hash.h>
 #include <adts_math.h>
+#include <adts_hash.h>
 #include <adts_private.h>
 #include <adts_services.h>
 
@@ -23,14 +23,6 @@
 #     #    #    #    #  #     # #     #    #    #     # #    #  #       #     #
  #####     #    #     #  #####   #####     #     #####  #     # #######  #####
 ******************************************************************************/
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-//#define HASH_NODE_VALID (0x1122334455667788llu)
 
 /*
  ****************************************************************************
@@ -46,28 +38,6 @@ typedef struct hash_node_s {
     struct hash_node_s *p_prev;   /**< collision management */
     struct hash_node_s *p_next;   /**< collision management */
 } hash_node_t;
-
-
-/*
- ****************************************************************************
- * \details
- *   The hash workspace is an array of pointers, thus reserve as:
- *      32bit:
- *        1024 entries = pagesize / ptr size
- *
- *      64bit:
- *        512  entries = pagesize / ptr size
- *
- *   which is 0.5 4k page in 32bit mode and 1 4k page in 64bit mode.
- *
- ****************************************************************************
- */
-//FIXME: The number of entries in a hash table should be a prime number
-//       investigate the following:
-//         1) how to get the largest prime number from the selected pagesize
-//         2) How to grow / shrink by approximate pow2 but rounded to prev
-//            highest prime fitting in the pow2 space
-#define HASH_DEFAULT_ELEMS (4096 / sizeof(void *))
 
 
 /*
@@ -147,6 +117,7 @@ adts_hash_entries( adts_hash_t *p_adts_hash )
 //
 // adts_hash_destroy
 // adts_hash_create  //prime number of elems
+
 
 
 
