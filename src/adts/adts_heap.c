@@ -428,6 +428,7 @@ exception:
     return p_node;
 } /* adts_heap_pop() */
 
+
 /*
  ****************************************************************************
  *
@@ -450,6 +451,7 @@ adts_heap_push( adts_heap_t       *p_adts_heap,
     adts_sanity_entry(p_sanity);
 
     /* Key not validated. Duplicates and 0 value allowed */
+    assert(p_node);
     assert(p_data);
     assert(bytes);
 
