@@ -13,10 +13,10 @@
  *
  **************************************************************************
  */
-static bool
+bool
 adts_is_prime( const size_t prime );
 
-static bool
+bool
 adts_is_not_prime( const size_t prime );
 
 size_t

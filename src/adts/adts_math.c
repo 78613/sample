@@ -41,7 +41,7 @@
  *
  ****************************************************************************
  */
-static bool
+bool
 adts_is_prime( const size_t prime )
 {
     bool   rc  = false;
@@ -67,7 +67,7 @@ adts_is_prime( const size_t prime )
  *
  ****************************************************************************
  */
-static bool
+bool
 adts_is_not_prime( const size_t prime )
 {
     return !(adts_is_prime(prime));
