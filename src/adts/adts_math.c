@@ -204,6 +204,22 @@ utest_control( void )
         }
     }
 
+    CDISPLAY("=========================================================");
+    {
+        const size_t arr[] = {0, 1, 2, 3, 4, 5, 30, 33, 50, 4096};
+        const size_t elems = sizeof(arr) / sizeof(arr[0]);
+
+        for (size_t idx = 0; idx < elems; idx++) {
+            bool rc = 0;
+
+            printf("\n");
+            CDISPLAY("Input:  %d", arr[idx]);
+            rc = adts_is_prime(arr[idx]);
+            CDISPLAY("Output: %s", (rc) ? "true" : "false");
+        }
+    }
+
+
 
     return;
 } /* utest_control() */
