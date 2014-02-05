@@ -212,6 +212,7 @@ adts_hash_remove( adts_hash_t   *p_adts_hash,
     hash_t        *p_hash    = (hash_t *) p_adts_hash;
     size_t         idx       = 0;
     int32_t        rc        = 0;
+    hash_node_t   *p_tmp     = NULL;
     hash_node_t   *p_node    = NULL;
     adts_sanity_t *p_sanity  = &(p_hash->sanity);
 
@@ -225,7 +226,7 @@ adts_hash_remove( adts_hash_t   *p_adts_hash,
     }
 
     if (NULL == p_node->p_next) {
-        /* simple single entry removal */
+        /* simple single entry removal, all is well */
         remove_ok              = true;
         p_hash->workspace[idx] = 0;
         goto exception;
@@ -234,55 +235,31 @@ adts_hash_remove( adts_hash_t   *p_adts_hash,
     /* Process the collision chain */
     while (p_node) {
         if (p_key == p_node->p_key) {
-            /* Match, thus remove this node */
+            /* Match found. Remove this node. */
             remove_ok  = true;
             break;
         }
         p_node = p_node->p_next;
     }
 
-    if (false == remove_ok) {
-        /* Error, no nodes removed from bucket */
-        assert(p_node);
-    }else {
-        /* Update chain according to node position */
-        hash_node_t *p_tmp = NULL;
-
-        if (NULL == p_node->p_prev) {
-            /* Start of chain, update the source */
-            p_node->p_next->p_prev = NULL;
-            p_node                 = p_node->p_next;
-            p_hash->workspace[idx] = p_node;
-        }else {
-            /* Not start of chain */
-            if (p_node->p_prev) {
-                p_node->p_prev->p_next = p_node->p_next;
-            }
-
-            if (p_node->p_next) {
-                p_node->p_next->p_prev = p_node->p_prev;
-            }
-        }
-
-    }
-
-#if 0
-    while (p_node) {
-        if (p_key == p_node->p_key) {
-            /* Match, thus remove entry */
-            remove_ok  = true;
-            p_node     = p_node->p_next;
-            break;
-        }
-        p_node = p_node->p_next;
-    }
-#endif
-
-    /* Error, no nodes removed from bucket */
+    /* Logic error if no removal candidates present */
     assert(remove_ok);
 
-    /* Removed node was part of a collision cluster, thus decrement the
-     * total collision count */
+    if (NULL == p_node->p_prev) {
+        /* Remove from front */
+        p_node->p_next->p_prev = NULL;
+        p_node                 = p_node->p_next;
+        p_hash->workspace[idx] = p_node;
+    }else {
+        /* Remove from middle or end */
+        if (p_node->p_prev) {
+            p_node->p_prev->p_next = p_node->p_next;
+        }
+
+        if (p_node->p_next) {
+            p_node->p_next->p_prev = p_node->p_prev;
+        }
+    }
     p_hash->collisions_curr--;
 
 exception:
@@ -293,6 +270,7 @@ exception:
     adts_sanity_exit(p_sanity);
     return rc;
 } /* adts_hash_remove() */
+
 
 /*
  ****************************************************************************
@@ -718,7 +696,6 @@ utest_control( void )
         CDISPLAY("remove: %d", key[1]);
         rc = adts_hash_remove(p_hash, key[1]);
         assert(0 == rc);
-        adts_hash_display(p_hash);
 
         CDISPLAY("end");
         adts_hash_display(p_hash);
