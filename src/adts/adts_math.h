@@ -13,6 +13,18 @@
  *
  **************************************************************************
  */
+static bool
+adts_is_prime( const size_t prime );
+
+static bool
+adts_is_not_prime( const size_t prime );
+
+size_t
+adts_prime_ceiling( const size_t limit );
+
+size_t
+adts_prime_floor( const size_t limit );
+
 void
 utest_adts_math( void );
 
