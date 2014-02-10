@@ -24,7 +24,7 @@
  **************************************************************************
  */
 typedef struct {
-    char reserved[ ADTS_QUEUE_BYTES ];
+    const char reserved[ ADTS_QUEUE_BYTES ];
 } adts_queue_t;
 
 

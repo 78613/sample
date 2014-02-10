@@ -25,11 +25,11 @@
  **************************************************************************
  */
 typedef struct {
-    char reserved[ ADTS_HASH_BYTES ];
+    const char reserved[ ADTS_HASH_BYTES ];
 } adts_hash_t;
 
 typedef struct {
-    char reserved[ ADTS_HASH_NODE_BYTES ];
+    const char reserved[ ADTS_HASH_NODE_BYTES ];
 } adts_hash_node_t;
 
 

@@ -30,11 +30,11 @@ typedef enum {
 } adts_heap_type_t;
 
 typedef struct {
-    char reserved[ ADTS_HEAP_NODE_BYTES ];
+    const char reserved[ ADTS_HEAP_NODE_BYTES ];
 } adts_heap_node_t;
 
 typedef struct {
-    char reserved[ ADTS_HEAP_BYTES ];
+    const char reserved[ ADTS_HEAP_BYTES ];
 } adts_heap_t;
 
 

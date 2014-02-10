@@ -22,7 +22,7 @@
  **************************************************************************
  */
 typedef struct {
-    char reserved[ ADTS_STACK_BYTES ];
+    const char reserved[ ADTS_STACK_BYTES ];
 } adts_stack_t;
 
 
