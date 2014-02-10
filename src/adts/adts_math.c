@@ -42,6 +42,30 @@
  ****************************************************************************
  */
 bool
+adts_is_pow2( const int32_t input )
+{
+    return (0 == (input & (input - 1)));
+} /* adts_is_pow2() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_is_not_pow2( const int32_t input )
+{
+    return !(adts_is_pow2(input));
+} /* adts_is_not_pow2() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
 adts_is_prime( const size_t prime )
 {
     bool   rc  = false;
@@ -147,6 +171,65 @@ exception:
 } /* adts_prime_floor() */
 
 
+/*
+ ****************************************************************************
+ * \details
+ *
+ ****************************************************************************
+ */
+size_t
+adts_pow2_round_up( const uint32_t input )
+{
+    size_t val = 0;
+
+    if (adts_is_pow2(input)) {
+        val = input;
+        goto exception;
+    }
+
+    for (int32_t idx = 31; idx >= 0; idx--) {
+        int32_t x = input & (1 << idx);
+        if (x) {
+            val   = x; /* get bitpos */
+            val <<= 1; /* roundup */
+            break;
+        }
+    }
+
+exception:
+    return val;
+} /* adts_pow2_round_up() */
+
+
+/*
+ ****************************************************************************
+ * \details
+ *
+ ****************************************************************************
+ */
+size_t
+adts_pow2_round_down( const uint32_t input )
+{
+    size_t val = 0;
+
+    if (adts_is_pow2(input)) {
+        val = input;
+        goto exception;
+    }
+
+    for (int32_t idx = 31; idx >= 0; idx--) {
+        int32_t x = input & (1 << idx);
+        if (x) {
+            val = x; /* get bitpos */
+            break;
+        }
+    }
+
+exception:
+    return val;
+} /* adts_pow2_round_down() */
+
+
 
 /******************************************************************************
  * #     # #     #   ###   ####### ####### #######  #####  #######  #####
@@ -219,6 +302,35 @@ utest_control( void )
         }
     }
 
+    CDISPLAY("=========================================================");
+    {
+        const size_t arr[] = {0, 1, 2, 3, 4, 5, 30, 33, 50, 4096};
+        const size_t elems = sizeof(arr) / sizeof(arr[0]);
+
+        for (size_t idx = 0; idx < elems; idx++) {
+            size_t val = 0;
+
+            printf("\n");
+            CDISPLAY("Input:  %d", arr[idx]);
+            val = adts_pow2_round_up(arr[idx]);
+            CDISPLAY("Output: %d", val);
+        }
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        const size_t arr[] = {0, 1, 2, 3, 4, 5, 30, 33, 50, 4096};
+        const size_t elems = sizeof(arr) / sizeof(arr[0]);
+
+        for (size_t idx = 0; idx < elems; idx++) {
+            size_t val = 0;
+
+            printf("\n");
+            CDISPLAY("Input:  %d", arr[idx]);
+            val = adts_pow2_round_down(arr[idx]);
+            CDISPLAY("Output: %d", val);
+        }
+    }
 
 
     return;
