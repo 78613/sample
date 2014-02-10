@@ -24,11 +24,11 @@
  **************************************************************************
  */
 typedef struct {
-    char reserved[ ADTS_LIST_BYTES ];
+    const char reserved[ ADTS_LIST_BYTES ];
 } adts_list_t;
 
 typedef struct {
-    char reserved[ ADTS_LIST_ELEM_BYTES ];
+    const char reserved[ ADTS_LIST_ELEM_BYTES ];
 } adts_list_elem_t;
 
 
