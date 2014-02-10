@@ -328,9 +328,8 @@ adts_hash_insert( adts_hash_t      *p_adts_hash,
         p_tmp->p_prev          = p_node;
 
         p_hash->collisions_curr++;
-        if (p_hash->collisions_max < p_hash->collisions_curr) {
-            p_hash->collisions_max = p_hash->collisions_curr;
-        }
+        p_hash->collisions_max = MAX(p_hash->collisions_max,
+                                     p_hash->collisions_curr);
     }
 
     p_hash->elems_curr++;
