@@ -49,7 +49,15 @@ typedef struct list_s {
     adts_sanity_t sanity;
 } list_t;
 
+typedef enum {
+    LIST_REMOVE_HEAD,
+    LIST_REMOVE_TAIL,
+} list_op_remove_t;
 
+typedef enum {
+    LIST_APPEND,
+    LIST_PREPEND,
+} list_op_insert_t;
 
 
 
@@ -104,6 +112,120 @@ list_node_sanity( list_node_t *p_node )
 
     return;
 } /* list_node_sanity() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static adts_list_node_t *
+list_remove( adts_list_t      *p_adts_list,
+             list_op_remove_t  op )
+{
+    list_t        *p_list   = (list_t *) p_adts_list;
+    list_node_t   *p_node   = NULL;
+    adts_sanity_t *p_sanity = &(p_list->sanity);
+
+    adts_sanity_entry(p_sanity);
+
+    if (unlikely(adts_list_is_empty(p_adts_list))) {
+        /* empty list */
+        goto exception;
+    }
+
+    switch (op) {
+        case LIST_REMOVE_HEAD:
+            p_node = p_list->p_head;
+
+            /* adjust referrences */
+            p_list->p_head = p_list->p_head->p_next;
+            if (p_list->p_head) {
+                p_list->p_head->p_prev = NULL;
+            }else {
+                /* last element remove, update list tail */
+                p_list->p_tail = NULL;
+            }
+            break;
+
+        case LIST_REMOVE_TAIL:
+            p_node = p_list->p_tail;
+
+            /* adjust referrences */
+            p_list->p_tail = p_list->p_tail->p_prev;
+            if (p_list->p_tail) {
+                p_list->p_tail->p_next = NULL;
+            }else {
+                /* last element remove, update list tail */
+                p_list->p_head = NULL;
+            }
+            break;
+
+        default:
+            assert(0);
+            break;
+    }
+
+    /* clear node external referrences */
+    p_node->p_prev = NULL;
+    p_node->p_next = NULL;
+    p_node->p_list = NULL;
+
+    p_list->elems_curr--;
+
+exception:
+    adts_sanity_exit(p_sanity);
+    return (adts_list_node_t *) p_node;
+} /* list_remove() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+list_insert( adts_list_t      *p_adts_list,
+             adts_list_node_t *p_adts_list_node,
+             list_op_insert_t  op )
+{
+    int32_t        rc       = 0;
+    list_t        *p_list   = (list_t *) p_adts_list;
+    list_node_t   *p_node   = (list_node_t *) p_adts_list_node;
+    adts_sanity_t *p_sanity = &(p_list->sanity);
+
+    adts_sanity_entry(p_sanity);
+    list_node_sanity(p_node);
+
+    p_node->p_list = p_list;
+    memcpy(&(p_node->pub), &(p_adts_list_node->pub), sizeof(p_node->pub));
+
+    if (unlikely(adts_list_is_empty(p_adts_list))) {
+        p_list->p_head = p_node;
+        p_list->p_tail = p_node;
+    }else {
+        switch (op) {
+            case LIST_APPEND:
+                p_list->p_tail->p_next = p_node;
+                p_node->p_prev         = p_list->p_tail;
+                p_list->p_tail         = p_list->p_tail->p_next;
+                break;
+            case LIST_PREPEND:
+                p_node->p_next         = p_list->p_head;
+                p_list->p_head->p_prev = p_node;
+                p_list->p_head         = p_node;
+                break;
+            default:
+                assert(0);
+                break;
+        }
+    }
+
+    p_list->elems_curr++;
+
+    adts_sanity_exit(p_sanity);
+    return rc;
+} /* list_insert() */
 
 
 /*
@@ -343,42 +465,36 @@ adts_list_peek_tail( adts_list_t *p_adts_list )
  *
  ****************************************************************************
  */
+int32_t
+adts_list_append( adts_list_t      *p_adts_list,
+                  adts_list_node_t *p_adts_list_node )
+{
+    return list_insert(p_adts_list, p_adts_list_node, LIST_APPEND);
+} /* adts_list_append() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+int32_t
+adts_list_prepend( adts_list_t      *p_adts_list,
+                   adts_list_node_t *p_adts_list_node )
+{
+    return list_insert(p_adts_list, p_adts_list_node, LIST_PREPEND);
+} /* adts_list_prepend() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 adts_list_node_t *
 adts_list_remove_head( adts_list_t *p_adts_list )
 {
-    list_t        *p_list   = (list_t *) p_adts_list;
-    list_node_t   *p_node   = NULL;
-    adts_sanity_t *p_sanity = &(p_list->sanity);
-
-    adts_sanity_entry(p_sanity);
-
-    if (NULL == p_list->p_head) {
-        /* empty list */
-        goto exception;
-    }
-
-    /* get node */
-    p_node = p_list->p_head;
-
-    /* adjust referrences */
-    p_list->p_head = p_list->p_head->p_next;
-    if (p_list->p_head) {
-        p_list->p_head->p_prev = NULL;
-    }else {
-        /* last element remove, update list tail */
-        p_list->p_tail = NULL;
-    }
-
-    /* clear node external referrences */
-    p_node->p_prev = NULL;
-    p_node->p_next = NULL;
-    p_node->p_list = NULL;
-
-    p_list->elems_curr--;
-
-exception:
-    adts_sanity_exit(p_sanity);
-    return (adts_list_node_t *) p_node;
+    return list_remove(p_adts_list, LIST_REMOVE_HEAD);
 } /* adts_list_remove_head() */
 
 
@@ -390,115 +506,8 @@ exception:
 adts_list_node_t *
 adts_list_remove_tail( adts_list_t *p_adts_list )
 {
-    list_t        *p_list   = (list_t *) p_adts_list;
-    list_node_t   *p_node   = NULL;
-    adts_sanity_t *p_sanity = &(p_list->sanity);
-
-    adts_sanity_entry(p_sanity);
-
-    if (NULL == p_list->p_tail) {
-        /* empty list */
-        goto exception;
-    }
-
-    /* get node */
-    p_node = p_list->p_tail;
-
-    /* adjust referrences */
-    p_list->p_tail = p_list->p_tail->p_prev;
-    if (p_list->p_tail) {
-        p_list->p_tail->p_next = NULL;
-    }else {
-        /* last element remove, update list tail */
-        p_list->p_head = NULL;
-    }
-
-    /* clear node external referrences */
-    p_node->p_prev = NULL;
-    p_node->p_next = NULL;
-    p_node->p_list = NULL;
-
-    p_list->elems_curr--;
-
-exception:
-    adts_sanity_exit(p_sanity);
-    return (adts_list_node_t *) p_node;
+    return list_remove(p_adts_list, LIST_REMOVE_TAIL);
 } /* adts_list_remove_tail() */
-
-
-/*
- ****************************************************************************
- *
- *
- ****************************************************************************
- */
-int32_t
-adts_list_append( adts_list_t      *p_adts_list,
-                  adts_list_node_t *p_adts_list_node )
-{
-    int32_t        rc       = 0;
-    list_t        *p_list   = (list_t *) p_adts_list;
-    list_node_t   *p_node   = (list_node_t *) p_adts_list_node;
-    adts_sanity_t *p_sanity = &(p_list->sanity);
-
-    adts_sanity_entry(p_sanity);
-    list_node_sanity(p_node);
-
-    p_node->p_list = p_list;
-    memcpy(&(p_node->pub), &(p_adts_list_node->pub), sizeof(p_node->pub));
-
-    if (NULL == p_list->p_tail) {
-        p_list->p_head = p_node;
-        p_list->p_tail = p_node;
-    }else {
-        p_list->p_tail->p_next = p_node;
-        p_node->p_prev         = p_list->p_tail;
-        p_list->p_tail         = p_list->p_tail->p_next;
-    }
-
-    p_list->elems_curr++;
-
-exception:
-    adts_sanity_exit(p_sanity);
-    return rc;
-} /* adts_list_append() */
-
-
-/*
- ****************************************************************************
- *
- *
- ****************************************************************************
- */
-int32_t
-adts_list_prepend( adts_list_t      *p_adts_list,
-                   adts_list_node_t *p_adts_list_node )
-{
-    int32_t        rc       = 0;
-    list_t        *p_list   = (list_t *) p_adts_list;
-    list_node_t   *p_node   = (list_node_t *) p_adts_list_node;
-    adts_sanity_t *p_sanity = &(p_list->sanity);
-
-    adts_sanity_entry(p_sanity);
-    list_node_sanity(p_node);
-
-    p_node->p_list = p_list;
-    memcpy(&(p_node->pub), &(p_adts_list_node->pub), sizeof(p_node->pub));
-
-    if (NULL == p_list->p_head) {
-        p_list->p_head = p_node;
-        p_list->p_tail = p_node;
-    }else {
-        p_node->p_next           = p_list->p_head;
-        p_list->p_head->p_prev   = p_node;
-        p_list->p_head           = p_node;
-    }
-
-    p_list->elems_curr++;
-
-    adts_sanity_exit(p_sanity);
-    return rc;
-} /* adts_list_prepend() */
 
 
 /*
