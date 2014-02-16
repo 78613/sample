@@ -28,8 +28,13 @@
  * \details
  **************************************************************************
  */
-#define MIN( _a, _b )  (((_a) < (_b)) ? (_a) : (_b))
-#define MAX( _a, _b )  (((_a) > (_b)) ? (_a) : (_b))
+#ifndef MIN
+    #define MIN( _a, _b )  (((_a) < (_b)) ? (_a) : (_b))
+#endif
+
+#ifndef MAX
+    #define MAX( _a, _b )  (((_a) > (_b)) ? (_a) : (_b))
+#endif
 
 
 /**
