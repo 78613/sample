@@ -1,5 +1,14 @@
 
 # ======================================================
+HFILES  += pe.h
+HFILES  += cci.h
+HFILES  += epi.h
+HFILES  += misc.h
+
+CFILES  += pe.c
+CFILES  += cci.c
+CFILES  += epi.c
+CFILES  += misc.c
 CFILES  += utest.c
 
 # Everything below this line is standard Makefile logic:
@@ -22,6 +31,7 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
  CFLAGS  += -Wall 
  CFLAGS  += -Wextra
  CFLAGS  += -O3
+ CFLAGS  += -D__ADTS_DISPLAY
 
 #CFLAGS  += -v 
 #CFLAGS  += -Q # Print compiled function and statistics
@@ -34,6 +44,7 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
  LNAMES += -ladts
 
 
+ HPATHS += -I .
  HPATHS += -I ../adts/
 # ======================================================
 
