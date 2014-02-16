@@ -23,13 +23,20 @@
  *
  **************************************************************************
  */
+
 typedef struct {
     const char reserved[ ADTS_LIST_BYTES ];
 } adts_list_t;
 
 typedef struct {
-    const char reserved[ ADTS_LIST_ELEM_BYTES ];
-} adts_list_elem_t;
+    void   *p_data;
+    size_t  bytes;
+} adts_list_node_public_t;
+
+typedef union {
+    const char                    reserved[ ADTS_LIST_ELEM_BYTES ];
+    const adts_list_node_public_t pub;
+} adts_list_node_t;
 
 
 
