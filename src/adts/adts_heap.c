@@ -147,12 +147,11 @@ heap_resize_shrink_candidate( heap_t *p_heap )
     size_t trigger = 0;
 
     if (HEAP_DEFAULT_ELEMS < p_heap->elems_limit) {
-        /* - heap has grown beyond the default,
-         * - to avoid resize churn, only make resize candidacy when
-         *   the utilization is lower than 50% of the next lowest level
-         *   from current level */
-        trigger  = p_heap->elems_limit / 2;
-        trigger /= 2;
+        /* - growth beyond the default,
+         * - to avoid resize thrashing, only make resize candidacy when
+         *   the utilization is 25% of current, such that after resizing
+         *   the usage is at most 50%, */
+        trigger = p_heap->elems_limit / 4;
         if (p_heap->elems_curr < trigger) {
             /* Stack is under utilized based on current allocation */
             rc = true;

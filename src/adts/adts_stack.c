@@ -11,6 +11,16 @@
 #include <adts_private.h>
 #include <adts_services.h>
 
+/*
+ ****************************************************************************
+ *  Future work items:
+ *    - probailistic failure reduction on resize growth.  Use a high-watermark
+ *      to attempt grow operations to reduce likelyhood of malloc failures.
+ *      the current implementaion may fail to grow because it waits till the
+ *      stack if full before attempting.
+ ****************************************************************************
+ */
+
 
 /******************************************************************************
  #####  ####### ######  #     #  #####  ####### #     # ######  #######  #####
@@ -143,12 +153,11 @@ stack_resize_shrink_candidate( stack_t *p_stack )
     size_t trigger = 0;
 
     if (STACK_DEFAULT_ELEMS < p_stack->elems_limit) {
-        /* - stack has grown beyond the default,
-         * - to avoid resize churn, only make resize candidacy when
-         *   the utilization is lower than 50% of the next lowest level
-         *   from current level */
-        trigger  = p_stack->elems_limit / 2;
-        trigger /= 2;
+        /* - growth beyond the default,
+         * - to avoid resize thrashing, only make resize candidacy when
+         *   the utilization is 25% of current, such that after resizing
+         *   the usage is at most 50%, */
+        trigger = p_stack->elems_limit / 4;
         if (p_stack->elems_curr < trigger) {
             /* Stack is under utilized based on current allocation */
             rc = true;
