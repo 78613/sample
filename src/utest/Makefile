@@ -4,6 +4,7 @@ HFILES  += pe.h
 HFILES  += cci.h
 HFILES  += epi.h
 HFILES  += misc.h
+HFILES  += utest.h
 
 CFILES  += pe.c
 CFILES  += cci.c

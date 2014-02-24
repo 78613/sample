@@ -1,14 +1,6 @@
 
-#include <errno.h>
-#include <assert.h>
-#include <string.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <inttypes.h>
-
-/* Toolbox */
-#include <adts_stack.h>
-#include <adts_services.h>
+#include <adts.h>
+#include <utest.h>
 
 
 

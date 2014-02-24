@@ -1,6 +1,7 @@
 
 
 # ======================================================
+HFILES  += adts.h
 HFILES  += adts_bits.h
 HFILES  += adts_hash.h
 HFILES  += adts_heap.h
