@@ -26,11 +26,11 @@ utest_adts( void )
 {
 //    utest_adts_bits();
 //    utest_adts_time();
-    utest_adts_list();
+//    utest_adts_list();
 //    utest_adts_heap();
 //    utest_adts_math();
 //    utest_adts_hash();
-//    utest_adts_sort();
+    utest_adts_sort();
 //    utest_adts_tree();
 //    utest_adts_stack();
 //    utest_adts_queue();

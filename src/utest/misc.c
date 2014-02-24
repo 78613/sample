@@ -7,7 +7,7 @@
 #include <inttypes.h>
 
 /* Toolbox */
-#include <adts_private.h>
+#include <adts_stack.h>
 #include <adts_services.h>
 
 
@@ -136,10 +136,12 @@ odd_num_display( size_t limit )
     for (int32_t i = 1; i <= limit; i += 2) {
         printf(" %3i ", i);
 
+        /* eyecandy */
         if (9 == (i % 10)) {
             printf("\n");
         }
     }
+
     return;
 } /* odd_num_display() */
 
@@ -170,7 +172,6 @@ multiplication_table( size_t limit )
  * Iteratively generate the fibonacci numbers up to the specified term.  Where
  * term refers to the 0-based offset in the series.  Return the value
  * corresponding to that term.
- *
  *
  ****************************************************************************
  */
@@ -204,6 +205,77 @@ fibonacci_i( size_t term )
 } /* fibonacci_i() */
 
 
+/*
+ ****************************************************************************
+ * Validate if all opening and closing brackes are valid
+ * - () () {()} {()[]}
+ *
+ *
+ ****************************************************************************
+ */
+static bool
+scope_compare( char curr,
+               char prev )
+{
+    bool rc = false;
+
+    switch (curr) {
+        case ']':
+            rc = !('[' == prev);
+            break;
+        case '}':
+            rc = !('{' == prev);
+            break;
+        case ')':
+            rc = !('(' == prev);
+            break;
+        default:
+            /* compare expected but not matched */
+            rc = true;
+            break;
+    }
+
+    return rc;
+} /* scope_compare() */
+
+
+
+bool
+scope_invalid( char *p_str )
+{
+    assert(p_str);
+
+    bool          rc      = false;
+    char         *p_run   = p_str;
+    adts_stack_t *p_stack = adts_stack_create();
+
+    while ('\0' != *p_run) {
+        char tmp = 0;
+
+        if (('[' == *p_run) || ('{' == *p_run) || ('(' == *p_run)) {
+            adts_stack_push(p_stack, *p_run, sizeof(*p_run));
+        }
+        else if ((']' == *p_run) || ('}' == *p_run) || (')' == *p_run)) {
+            /* Close scopes found, now pop from stack to compare */
+            tmp = adts_stack_pop(p_stack);
+            rc  = scope_compare(*p_run, tmp);
+            if (rc) {
+                goto exception;
+            }
+        }
+        p_run++;
+    }
+
+    if (adts_stack_is_not_empty(p_stack)) {
+        /* stack should always be empty on completion to detect unclosed
+         * scope values. */
+        rc = true;
+    }
+
+exception:
+    adts_stack_destroy(p_stack);
+    return rc;
+} /* scope_invalid() */
 
 
 
@@ -286,6 +358,35 @@ utest_control( void )
             CDISPLAY("Input:  %i", val);
             bool rc = is_binary_palindrome(val);
             CDISPLAY("Output: %i", rc);
+        }
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: scope validity");
+
+        #define X  (256)
+        #define Y  (8)
+
+        char    arr[Y][X] = {
+                             {""},
+                             {"()"},
+                             {"() {()} [({})]"},
+                             {"[] ({} ()) [() {()}]"},
+                             {"[1+2] (3 * {4 + 5} + (6 + 7)) - [() {()}]"},
+                             {")"},
+                             {"()("},
+                             {"{[)"},
+                            };
+        size_t  elems     = Y;
+
+        for (int32_t i = 0; i < elems; i++) {
+            char *p_ws = &(arr[0, i]);
+
+            printf("\n");
+            CDISPLAY("[%i] Input:  %s", i, p_ws);
+            bool rc = scope_invalid(p_ws);
+            CDISPLAY("[%i] Output: %i", i, rc);
         }
     }
 
