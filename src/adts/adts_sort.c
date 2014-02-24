@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <limits.h>
+#include <stdlib.h> /* rand */
 #include <stdbool.h>
 #include <inttypes.h>
 
@@ -12,6 +13,20 @@
 #include <adts_private.h>
 #include <adts_services.h>
 
+
+/*
+ ****************************************************************************
+ *  Future work items:
+ *    - The sorting function need to be designed as follows:
+ *      - accept consumer callback function for comparison
+ *        - for example , consumer func needed if sorting dates or times
+ *      - provide a list of available callback function for user selection
+ *        for the simple well known datatypes
+ *      - sort ascending and decending based on input flags
+ *      - manage linked list and array type sorting
+ *      - see Java comparable service for examples (-1, 0, 1) inteface
+ ****************************************************************************
+ */
 
 
 /******************************************************************************
@@ -23,6 +38,30 @@
 #     #    #    #    #  #     # #     #    #    #     # #    #  #       #     #
  #####     #    #     #  #####   #####     #     #####  #     # #######  #####
 ******************************************************************************/
+/*
+ ****************************************************************************
+ * \detail
+ *    For sorting algorithms where small arrays have too much processing
+ *    overhead, we create a threahold such as to perform a simpler sort.
+ ****************************************************************************
+ */
+#define SORT_THREASHOLD (8)
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   macro based swap logic.
+ *    - leverages input type for tmp and max reuse
+ *    - macro based for pseudo inline capability
+ ****************************************************************************
+ */
+#define SWAP( _pa, _pb, _type ) { \
+    _type _tmp = *_pa;            \
+                                  \
+    *_pa = *_pb;                  \
+    *_pb = _tmp;                  \
+}
 
 
 /******************************************************************************
@@ -36,22 +75,35 @@
 ******************************************************************************/
 
 
+
 /*
  ****************************************************************************
+ * \details
+ *   uniformly random permutation of the input array, provided no
+ *   duplicate values
  *
+ *   FIXME:
+ *     Using % i results in pseudo - random.  There is no inherit capability
+ *     in C standard lib to get a random number from 0 -> M.  Thus more
+ *     research is neede here
+ *
+ * Time:  O(n) // linear time shuffle
+ * Space: O(1) // no space scaling
  ****************************************************************************
  */
-static inline void
-swap32( int32_t *p_a,
-        int32_t *p_b )
+void
+adts_shuffle( int32_t arr[],
+              size_t  elems )
 {
-    int32_t tmp = *p_a;
-
-    *p_a = *p_b;
-    *p_b = tmp;
+    for (int32_t i = 0; i < elems; i++) {
+        //FIXME: Using % i results in pseudo - random.  Research this further
+        int32_t r = rand() % (i + 1);
+        SWAP(&arr[i], &arr[r], int32_t);
+    }
 
     return;
-} /* swap32() */
+} /* adts_shuffle() */
+
 
 
 /*
@@ -59,12 +111,40 @@ swap32( int32_t *p_a,
  *
  ****************************************************************************
  */
-static inline int32_t
-sort_pivot_select( int32_t a,
-                   int32_t b )
+bool
+adts_arr_is_not_sorted( int32_t arr[],
+                        size_t  elems )
 {
-    return (a + b) / 2;
-} /* sort_pivot_select() */
+    bool rc = 0;
+
+    if (unlikely(1 >= elems)) {
+        /* sorted by definition */
+        goto exception;
+    }
+
+    for (int32_t idx = 1; idx < elems; idx++) {
+        if (arr[idx - 1] > arr[idx]) {
+            rc = true;
+            break;
+        }
+    }
+
+exception:
+    return rc;
+} /* adts_arr_is_not_sorted() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_arr_is_sorted( int32_t arr[],
+                    size_t  elems )
+{
+    return !(adts_arr_is_not_sorted(arr, elems));
+} /* adts_arr_is_sorted() */
 
 
 /*
@@ -93,65 +173,55 @@ adts_array_display( int32_t       arr[],
 /*
  ****************************************************************************
  *
- *  Time:  O(n*log(n)
- *  Space: O(n)
  ****************************************************************************
  */
-static inline void
-sort_quick_recursive( int32_t arr[],
-                      size_t  head,
-                      size_t  tail )
+void
+adts_sort_shell( int32_t       arr[],
+                 const size_t  elems )
 {
-    if (head < tail) {
-        int32_t hidx  = 0; /* temp head */
-        int32_t tidx  = 0; /* temp tail */
-        int32_t key   = 0;
-        int32_t pivot = sort_pivot_select(head, tail);
+    int32_t h = 1;
 
-        /* swap the head with the pivot point */
-        swap32(&(arr[head]), &(arr[pivot]));
+    while (h < (elems / 3)) {
+        /* Initial increment sequence */
+        h = (3 * h) + 1;
+    }
 
-        key = arr[head];
-        hidx  = head + 1;
-        tidx  = tail;
-        while (hidx <= tidx) {
-            while ((hidx <= tail) && (arr[hidx] <= key)) {
-                hidx++;
-            }
-
-            while ((tidx >= head) && (arr[tidx] > key)) {
-                tidx--;
-            }
-
-            if (hidx < tidx) {
-                swap32(&(arr[hidx]), &(arr[tidx]));
+    /* sort */
+    while (h >= 1) {
+        for (int32_t i = h; i < elems; i++) {
+            for (int32_t j = i; (j >= h) && (arr[j] < arr[j - h]); j -= h) {
+                SWAP(&arr[j], &arr[j - h], int32_t);
             }
         }
-        /* swap two elements */
-        swap32(&(arr[head]), &(arr[tidx]));
 
-        /* recursively sort the lesser arr */
-        sort_quick_recursive(arr, head, tidx - 1);
-        sort_quick_recursive(arr, tidx + 1, tail);
+        /* mode to next increment */
+        h = h / 3;
     }
 
     return;
-} /* sort_quick_recursive() */
+} /* adts_sort_shell() */
+
 
 
 /*
  ****************************************************************************
+ * \details
+ *   given an array with pre-determined bounds, perform a sort of the members
+ *   within the pre-defined bounds.
  *
  ****************************************************************************
  */
-static inline void
-sort_quick_iterative( int32_t arr[],
-                      size_t  elems )
+void
+adts_sort_shell_ext( int32_t arr[],
+                     size_t  lo,
+                     size_t  hi )
 {
-    CDISPLAY("Incomplete...");
+    int32_t elems = hi - lo;
+
+    adts_sort_shell(&arr[lo], elems);
 
     return;
-} /* sort_quick_iterative() */
+} /* adts_sort_shell_ext() */
 
 
 /*
@@ -160,75 +230,39 @@ sort_quick_iterative( int32_t arr[],
  ****************************************************************************
  */
 void
-adts_sort_quick_r( int32_t arr[],
-                   size_t  elems )
+sort_merge_merge( int32_t arr[],
+                  int32_t aux[],
+                  int32_t lo,
+                  int32_t mid,
+                  int32_t hi )
 {
-    sort_quick_recursive(arr, 0, (elems - 1));
-    return;
-} /* adts_sort_quick_r() */
+    /* copy */
+    for (int32_t k = lo; k <= hi; k++) {
+        aux[k] = arr[k];
+    }
 
+    int32_t i = lo;
+    int32_t j = mid + 1;
 
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-void
-adts_sort_quick_i( int32_t arr[],
-                   size_t  elems )
-{
-    sort_quick_iterative(arr, elems);
-    return;
-} /* adts_sort_quick_r() */
-
-
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-void
-sort_merge( int32_t arr[],
-            int32_t tmp[],
-            int32_t left,
-            int32_t mid,
-            int32_t right )
-{
-    int32_t tmp_pos  = (right - left) + 1;
-    int32_t elems    = left;
-    int32_t left_end = mid - 1;
-
-    while ((left <= left_end) && (mid <= right)) {
-        if (arr[left] <= arr[mid]) {
-            tmp[tmp_pos] = arr[left];
-            tmp_pos     += 1;
-            left        += 1;
+    /* merge */
+    for (int32_t k = lo; k <= hi; k++) {
+        if (i > mid) {
+            arr[k] = aux[j];
+            j++;
+        }else if (j > hi) {
+            arr[k] = aux[i];
+            i++;
+        }else if (aux[j] < arr[i]) {
+            arr[k] = aux[j];
+            j++;
         }else {
-            tmp[tmp_pos] = arr[mid];
-            tmp_pos     += 1;
-            mid         += 1;
+            arr[k] = aux[i];
+            i++;
         }
     }
 
-    while (left <= left_end) {
-        tmp[tmp_pos] = arr[left];
-        left        += 1;
-        mid         += 1;
-    }
-
-    while (mid <= right) {
-        tmp[tmp_pos] = arr[mid];
-        mid         += 1;
-        tmp_pos     += 1;
-    }
-
-    for (int32_t i = 0; i< elems; i++) {
-        arr[right] = tmp[right];
-        right     -= 1;
-    }
-
     return;
-} /* sort_merge() */
+} /* sort_merge_merge() */
 
 
 /*
@@ -236,27 +270,32 @@ sort_merge( int32_t arr[],
  *
  ****************************************************************************
  */
-void
-sort_merge_r( int32_t arr[],
-              int32_t tmp[],
-              int32_t left,
-              int32_t right )
+static void
+sort_merge_sort( int32_t arr[],
+                 int32_t aux[],
+                 int32_t lo,
+                 int32_t hi )
 {
-    /* recursively sort and merge the array until left and right indexes meet */
-    if (left < right) {
-        int32_t mid = (left + right) / 2;
-
-        /* recursively sort the left side up to middle point */
-        sort_merge_r(arr, tmp, left, mid);
-
-        /* recursively sort from middle to right side */
-        sort_merge_r(arr, tmp, (mid + 1), right);
-
-        sort_merge(arr, tmp, left, (mid + 1), right);
+    if (hi <= lo) {
+        /* done */
+        goto exception;
     }
 
+    /* small arrays are more efficiently processed with elementary sorts */
+    if (hi <= (lo + SORT_THREASHOLD - 1)) {
+        adts_sort_shell_ext(arr, lo, hi);
+        goto exception;
+    }
+
+    int32_t mid = lo + (hi - lo) / 2;
+
+    sort_merge_sort(arr, aux, lo, mid);      /* soft left */
+    sort_merge_sort(arr, aux, mid + 1, hi);  /* sort right */
+    sort_merge_merge(arr, aux, lo, mid, hi); /* merge results */
+
+exception:
     return;
-} /* sort_merge_r() */
+} /* sort_merge_sort() */
 
 
 /*
@@ -267,23 +306,21 @@ sort_merge_r( int32_t arr[],
  ****************************************************************************
  */
 int32_t
-adts_sort_merge_r( int32_t arr[],
-                   size_t  elems )
+adts_sort_merge( int32_t arr[],
+                 size_t  elems )
 {
     int32_t  rc    = 0;
     int32_t *p_tmp = NULL;
 
     /* Merge sort requires O(n) space, thus allocate here */
-    p_tmp = calloc(1, sizeof(arr));
+    p_tmp = calloc(elems, sizeof(arr[0]));
     if (NULL == p_tmp) {
         rc = EINVAL;
         goto exception;
     }
 
     /* Pass the temp array along with start end indexes */
-    sort_merge_r(arr, p_tmp, 0, (elems - 1));
-
-    CDISPLAY("FIXME!!!!!");
+    sort_merge_sort(arr, p_tmp, 0, (elems - 1));
 
 exception:
     if (p_tmp) {
@@ -291,7 +328,105 @@ exception:
     }
 
     return rc;
-} /* adts_sort_merge_r() */
+} /* adts_sort_merge() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+sort_quick_partition( int32_t arr[],
+                      size_t  lo,
+                      size_t  hi )
+{
+    int32_t i = lo;
+    int32_t j = hi + 1;
+
+    for (;;) {
+        /* find item on left to swap */
+        while (arr[++i] < arr[lo]) {
+            if (i == hi) {
+                break;
+            }
+        }
+
+        /* find item on right to swap */
+        while (arr[lo] < arr[--j]) {
+            if (j == lo) {
+                break;
+            }
+        }
+
+        /* check if pointes crossed */
+        if (i >= j) {
+            break;
+        }
+
+        SWAP(&arr[i], &arr[j], int32_t);
+    }
+
+    /* swap with partition item */
+    SWAP(&arr[lo], &arr[j], int32_t);
+
+    /* Index of item now in place */
+    return j;
+} /* sort_quick_partition() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static void
+sort_quick( int32_t arr[],
+            size_t  lo,
+            size_t  hi )
+{
+    if (hi <= lo) {
+        /* done */
+        goto exception;
+    }
+
+    /* small arrays are more efficiently processed with elementary sorts */
+    if (hi <= (lo + SORT_THREASHOLD - 1)) {
+        adts_sort_shell_ext(arr, lo, hi);
+        goto exception;
+    }
+
+    int32_t j = sort_quick_partition(arr, lo, hi);
+
+    sort_quick(arr, lo, j - 1);
+    sort_quick(arr, j + 1, hi);
+
+exception:
+    return;
+} /* sort_quick() */
+
+
+/*
+ ****************************************************************************
+ *
+ *  Time:  O(?)
+ *  Space: O(1)
+ ****************************************************************************
+ */
+void
+adts_sort_quick( int32_t arr[],
+                 size_t  elems )
+{
+    /* shuffle to probabilistically eliminate the N^2 worst case scenario */
+    adts_shuffle(arr, elems);
+
+    /* start the sort recursion */
+    sort_quick(arr, 0, elems - 1);
+
+    return;
+} /* adts_sort_quick() */
 
 
 
@@ -327,12 +462,43 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        CDISPLAY("Test: quicksort ");
+        CDISPLAY("Test: unsorted array ");
         const int32_t arr[] = {1,9,2,8,3,7,4,6,5,0,99};
+        const size_t  elems = sizeof(arr) / sizeof(arr[0]);
+        bool          rc    = false;
+
+        adts_array_display(arr, elems);
+        rc = adts_arr_is_sorted(arr, elems);
+        assert(false == rc);
+
+        rc = adts_arr_is_not_sorted(arr, elems);
+        assert(rc);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: sorted array ");
+        const int32_t arr[] = {3,4,5,5,5,8,9,10,99};
+        const size_t  elems = sizeof(arr) / sizeof(arr[0]);
+        bool          rc    = false;
+
+        adts_array_display(arr, elems);
+        rc = adts_arr_is_sorted(arr, elems);
+        assert(rc);
+
+        rc = adts_arr_is_not_sorted(arr, elems);
+        assert(false == rc);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: shuffle");
+        int32_t       rc    = 0;
+        int32_t       arr[] = {3,4,5,5,5,8,9,10,99};
         const size_t  elems = sizeof(arr) / sizeof(arr[0]);
 
         adts_array_display(arr, elems);
-        adts_sort_quick_r(arr, elems);
+        adts_shuffle(arr, elems);
         printf("\n");
         adts_array_display(arr, elems);
 
@@ -340,16 +506,45 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        CDISPLAY("Test: merge ");
-        const int32_t arr[] = {1,9,2,8,3,7,4,6,5,0,99};
+        CDISPLAY("Test: shell sort");
+        int32_t       rc    = 0;
+        int32_t       arr[] = {1,9,2,8,3,7,4,6,5,0,99};
         const size_t  elems = sizeof(arr) / sizeof(arr[0]);
 
         adts_array_display(arr, elems);
-        adts_sort_merge_r(arr, elems);
+        adts_sort_shell(arr, elems);
         printf("\n");
         adts_array_display(arr, elems);
 
     }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: merge sort");
+        int32_t       rc    = 0;
+        int32_t       arr[] = {1,9,2,8,3,7,4,6,5,0,99};
+        const size_t  elems = sizeof(arr) / sizeof(arr[0]);
+
+        adts_array_display(arr, elems);
+        rc = adts_sort_merge(arr, elems);
+        assert(0 == rc);
+        printf("\n");
+        adts_array_display(arr, elems);
+    }
+return;
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: quick sort");
+        int32_t       rc    = 0;
+        int32_t       arr[] = {1,9,2,8,3,7,4,6,5,0,99};
+        const size_t  elems = sizeof(arr) / sizeof(arr[0]);
+
+        adts_array_display(arr, elems);
+        adts_sort_quick(arr, elems);
+        printf("\n");
+        adts_array_display(arr, elems);
+    }
+
 
 
     return;
