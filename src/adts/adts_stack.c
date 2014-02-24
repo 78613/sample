@@ -18,6 +18,25 @@
  *      to attempt grow operations to reduce likelyhood of malloc failures.
  *      the current implementaion may fail to grow because it waits till the
  *      stack if full before attempting.
+ *    - stack_create() options:
+ *      ADTS_STACK_STATIC  = requires dedicated create_wrapper()
+ *      ADTS_STACK_DYNAMIC = (ADTS_STACK_DYNAMIC_GROW|ADTS_STACK_DYNAMIC_SHRINK
+ *      ADTS_STACK_DYNAMIC_GROW
+ *      ADTS_STACK_DYNAMIC_SHRINK
+ *      ADTS_STACK_DESTROY_SANITY = display unfreed entries
+ *      ADTS_STACK_DESTROY_AUTO_DRAIN
+ *    - counters for all of the above to assist in identifying performance
+ *      bottlenecks
+ *    - utilization statistics
+ *    - what is the current limit, vs current use?
+ *    - what is the max collision depth?
+ *    - how many current collisions exist?
+ *    - what is the current distribution: evaluates the hash function effectiveness
+ *    - optional: force an error on threadhold / assupmtion violations
+ *
+ *    - adts_stack_create()     - simple defaults
+ *    - adts_stack_create_ext() - user defined options
+ *
  ****************************************************************************
  */
 
