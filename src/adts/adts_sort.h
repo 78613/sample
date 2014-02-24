@@ -34,6 +34,9 @@ void
 adts_sort_shell_ext( int32_t arr[],
                      size_t  lo,
                      size_t  hi );
+void
+adts_sort_insertion( int32_t arr[],
+                     size_t  elems );
 int32_t
 adts_sort_merge( int32_t arr[],
                  size_t  elems );
