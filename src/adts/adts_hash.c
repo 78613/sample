@@ -14,6 +14,16 @@
 #include <adts_services.h>
 
 
+/*
+ ****************************************************************************
+ *  Future work items:
+ *   - Extend the collision detection logic to indicate max collisions per
+ *     entry and current deepest entry
+ *   - create a collision depth warning / threshold option hash create
+ *     - assert / error whenver the limit is exceeded
+ ****************************************************************************
+ */
+
 /******************************************************************************
  #####  ####### ######  #     #  #####  ####### #     # ######  #######  #####
 #     #    #    #     # #     # #     #    #    #     # #     # #       #     #
