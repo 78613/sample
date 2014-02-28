@@ -3,6 +3,7 @@
 #define _H_ADTS_PRIVATE
 
 #include <stdint.h>
+#include <unistd.h>
 
 /**
  **************************************************************************
@@ -89,6 +90,49 @@ adts_sanity_entry( adts_sanity_t *p_sanity )
 
     return;
 } /* adts_sanity_entry() */
+
+
+/**
+ **************************************************************************
+ * \brief
+ *   Simple API for memory allocation on page boundaries
+ *
+ * \details
+ *
+ **************************************************************************
+ */
+static void *
+adts_mem_zalloc( size_t bytes )
+{
+    void      *p_mem  = NULL;
+    void     **pp_mem = &(p_mem);
+    int32_t    rc     = 0;
+    int32_t    align  = getpagesize(); /**< platform alignment */
+
+    rc = posix_memalign(pp_mem, align, bytes);
+    if (rc) {
+        p_mem = NULL;
+        goto exception;
+    }
+    memset(p_mem, 0, bytes);
+
+exception:
+    return p_mem;
+} /* adts_mem_zalloc() */
+
+
+/*
+ ****************************************************************************
+ *  \details
+ *    Number of pointers per system pagesize
+ ****************************************************************************
+ */
+static inline size_t
+adts_ptrs_per_page( void )
+{
+    return getpagesize() / sizeof(void *);
+} /* adts_ptrs_per_page() */
+
 
 
 #endif /* _H_ADTS_PRIVATE */

@@ -27,7 +27,7 @@ typedef struct {
 
 typedef union {
     const char                    reserved[ ADTS_LIST_ELEM_BYTES ];
-    const adts_list_node_public_t pub;
+    const adts_list_node_public_t pub; /**< read only */
 } adts_list_node_t;
 
 

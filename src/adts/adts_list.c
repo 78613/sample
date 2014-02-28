@@ -29,7 +29,10 @@
  ****************************************************************************
  */
 typedef struct list_node_s {
-    adts_list_node_public_t  pub;    /* public data  - consumer visible */
+    /**< public data  - consumer visible */
+    adts_list_node_public_t  pub;
+
+    /**< private data */
     struct list_s           *p_list;
     struct list_node_s      *p_prev;
     struct list_node_s      *p_next;

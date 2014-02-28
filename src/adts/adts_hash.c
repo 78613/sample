@@ -17,8 +17,24 @@
 /*
  ****************************************************************************
  *  Future work items:
- *   - Extend the collision detection logic to indicate max collisions per
+ *   x extend the hash to check for key validity on insert
+ *   x extend to exppose the plublic data like the list services
+ *
+ *   - create a destroy sanity checker to inform of non-empty entries in table
+ *   - allow for externally provided memory
+ *
+ *   x Extend the collision detection logic to indicate max collisions per
  *     entry and current deepest entry
+ *
+ *   - create a calc function to determine the distribution.  Optionally
+ *     perform on insert and assert of bad distribution
+ *
+ *   x allow for user provided hash function
+ *   x default to integer hash function if no input function presented
+ *
+ *   x statistics for inserts / removes / searches (hash_statis)
+ *   x create hash stats display / report function
+ *
  *   - create a collision depth warning / threshold option hash create
  *     - assert / error whenver the limit is exceeded
  ****************************************************************************
@@ -34,17 +50,6 @@
  #####     #    #     #  #####   #####     #     #####  #     # #######  #####
 ******************************************************************************/
 
-/*
- ****************************************************************************
- * \FIXME
- *   Extend with more elaborate hash types as needed
- *
- ****************************************************************************
- */
-typedef enum {
-    HASH_TYPE_INTEGER = 1,
-} hash_func_type_t;
-
 
 /*
  ****************************************************************************
@@ -53,11 +58,9 @@ typedef enum {
  ****************************************************************************
  */
 typedef struct hash_node_s {
-    void               *p_data;   /**< consumer datapointer */
-    size_t              bytes;    /**< data bytes for  p_data */
-    void               *p_key;    /**< Key used for hash */
-    struct hash_node_s *p_prev;   /**< collision management */
-    struct hash_node_s *p_next;   /**< collision management */
+    adts_hash_node_public_t  pub;    /**< public data - consumer visible */
+    struct hash_node_s      *p_prev; /**< collision management */
+    struct hash_node_s      *p_next; /**< collision management */
 } hash_node_t;
 
 
@@ -67,14 +70,13 @@ typedef struct hash_node_s {
  ****************************************************************************
  */
 typedef struct hash_s {
-    size_t             elems_curr;
-    size_t             elems_limit;
-    size_t             collisions_curr;
-    size_t             collisions_max;
+    /**< public data  - consumer visible */
+    adts_hash_public_t pub;
+
+    /**< private data */
     hash_node_t      **workspace;
     adts_sanity_t      sanity;
-    hash_func_type_t   hashtype;
-    size_t             (*p_func) (struct hash_s *p_hash,
+    hash_idx_t         (*p_func) (struct hash_s *p_hash,
                                   const void    *p_key);
 } hash_t;
 
@@ -92,29 +94,113 @@ typedef struct hash_s {
  * #        #####  #     #  #####     #      ###   ####### #     #  #####
 ******************************************************************************/
 
+
 /*
  ****************************************************************************
  *
  ****************************************************************************
  */
-static size_t
-hash_func_default( hash_t      *p_hash,
-                   const void  *p_key )
+static bool
+hash_remove_collision( hash_t       *p_hash,
+                       void         *p_key,
+                       const size_t  idx )
 {
-    size_t           idx  = 0;
-    int64_t          val  = 0;
-    hash_func_type_t type = p_hash->hashtype;
+    bool               remove_ok = false;
+    hash_node_t       *p_tmp     = NULL;
+    hash_node_t       *p_node    = p_hash->workspace[idx];
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
 
-    switch (type) {
-        case HASH_TYPE_INTEGER:
-            idx = (int32_t) p_key % p_hash->elems_limit;
+    /* Process the collision chain */
+    while (p_node) {
+        if (p_key == p_node->pub.p_key) {
+            /* Match found. Remove this node. */
+            remove_ok  = true;
             break;
-        default:
-            assert(0);
+        }
+        p_node = p_node->p_next;
     }
 
-    return idx;
-} /* hash_func_default() */
+    /* Logic error if no removal candidates present */
+    assert(remove_ok);
+
+    if (NULL == p_node->p_prev) {
+        /* Remove from list head */
+        p_node->p_next->p_prev = NULL;
+        p_node                 = p_node->p_next;
+        p_hash->workspace[idx] = p_node;
+    }else {
+        /* Remove from middle or list tail */
+        if (p_node->p_prev) {
+            p_node->p_prev->p_next = p_node->p_next;
+        }
+
+        if (p_node->p_next) {
+            p_node->p_next->p_prev = p_node->p_prev;
+        }
+    }
+
+    /* process collision statistics, */
+    p_stats->coll_curr--;
+
+    /* If no current chain, decrement the chain instances */
+    p_tmp = p_hash->workspace[idx];
+    p_stats->chains_curr -= (NULL == p_tmp->p_next) ? 1 : 0;
+
+    return remove_ok;
+} /* hash_remove_collision() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_insert_collision( hash_t      *p_hash,
+                       hash_node_t *p_node,
+                       const size_t idx )
+{
+    size_t             depth   = 0;
+    int32_t            rc      = 0;
+    hash_node_t       *p_tmp   = NULL;
+    adts_hash_stats_t *p_stats = &(p_hash->pub.stats);
+
+    /* duplicate key sanity */
+    p_tmp = p_hash->workspace[idx];
+    while (p_tmp) {
+        if (p_node->pub.p_key == p_tmp->pub.p_key) {
+            rc = EINVAL;
+        }
+
+        /* travese the enire list for depth stats */
+        depth++;
+        p_tmp = p_tmp->p_next;
+    }
+
+    if (rc) {
+        /* key error detected, clear node and exit */
+        memset(p_node, 0, sizeof(*p_node));
+        goto exception;
+    }
+
+    /* Prepend node to collision list */
+    p_tmp                  = p_hash->workspace[idx];
+    p_hash->workspace[idx] = p_node;
+    p_node->p_next         = p_tmp;
+    p_tmp->p_prev          = p_node;
+
+    p_stats->coll_curr++;
+    p_stats->coll_max = MAX(p_stats->coll_max, p_stats->coll_curr);
+
+    /* Count chain instances, ignore if > 1 since it's already counted */
+    p_stats->chains_curr += (1 == depth) ? 1 : 0;
+
+    /* Max node collision _DEPTH_ in hashtable */
+    p_stats->chains_depth = MAX(depth, p_stats->chains_depth);
+
+exception:
+    return rc;
+} /* hash_insert_collision() */
 
 
 /*
@@ -123,11 +209,11 @@ hash_func_default( hash_t      *p_hash,
  ****************************************************************************
  */
 bool
-adts_hash_is_empty( adts_hash_t *p_adts_hash )
+adts_hash_is_empty( const adts_hash_t *p_adts_hash )
 {
     hash_t *p_hash = (hash_t *) p_adts_hash;
 
-    return (0 >= p_hash->elems_curr);
+    return (0 >= p_hash->pub.elems_curr);
 } /* adts_hash_is_empty() */
 
 
@@ -137,7 +223,7 @@ adts_hash_is_empty( adts_hash_t *p_adts_hash )
  ****************************************************************************
  */
 bool
-adts_hash_is_not_empty( adts_hash_t *p_adts_hash )
+adts_hash_is_not_empty( const adts_hash_t *p_adts_hash )
 {
     return !(adts_hash_is_empty(p_adts_hash));
 } /* adts_hash_is_not_empty() */
@@ -149,11 +235,11 @@ adts_hash_is_not_empty( adts_hash_t *p_adts_hash )
  ****************************************************************************
  */
 size_t
-adts_hash_entries( adts_hash_t *p_adts_hash )
+adts_hash_entries( const adts_hash_t *p_adts_hash )
 {
     hash_t *p_hash = (hash_t *) p_adts_hash;
 
-    return p_hash->elems_curr;
+    return p_hash->pub.elems_curr;
 } /* adts_hash_entries() */
 
 
@@ -173,7 +259,7 @@ adts_hash_display( adts_hash_t *p_adts_hash )
     adts_sanity_entry(p_sanity);
 
     /* display the entire hash with dynamic width formatting */
-    elems  = p_hash->elems_limit;
+    elems  = p_hash->pub.elems_limit;
     digits = adts_digits_decimal(elems);
 
     /* Walk the workspace displaying each entry */
@@ -192,10 +278,10 @@ adts_hash_display( adts_hash_t *p_adts_hash )
                     digits,
                     idx,
                     p_node,
-                    p_node->p_data,
-                    p_node->bytes,
-                    (int64_t) p_node->p_key,
-                    (int64_t) p_node->p_key,
+                    p_node->pub.p_data,
+                    p_node->pub.bytes,
+                    (int64_t) p_node->pub.p_key,
+                    (int64_t) p_node->pub.p_key,
                     p_node->p_prev,
                     p_node->p_next);
 
@@ -215,16 +301,16 @@ adts_hash_display( adts_hash_t *p_adts_hash )
  ****************************************************************************
  */
 int32_t
-adts_hash_remove( adts_hash_t   *p_adts_hash,
-                  const void    *p_key )
+adts_hash_remove( adts_hash_t *p_adts_hash,
+                  const void  *p_key )
 {
-    bool           remove_ok = false;
-    hash_t        *p_hash    = (hash_t *) p_adts_hash;
-    size_t         idx       = 0;
-    int32_t        rc        = 0;
-    hash_node_t   *p_tmp     = NULL;
-    hash_node_t   *p_node    = NULL;
-    adts_sanity_t *p_sanity  = &(p_hash->sanity);
+    bool               remove_ok = false;
+    hash_t            *p_hash    = (hash_t *) p_adts_hash;
+    size_t             idx       = 0;
+    int32_t            rc        = 0;
+    hash_node_t       *p_node    = NULL;
+    adts_sanity_t     *p_sanity  = &(p_hash->sanity);
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
 
     adts_sanity_entry(p_sanity);
 
@@ -235,46 +321,17 @@ adts_hash_remove( adts_hash_t   *p_adts_hash,
         goto exception;
     }
 
-    if (NULL == p_node->p_next) {
-        /* simple single entry removal, all is well */
+    if (likely(NULL == p_node->p_next)) {
         remove_ok              = true;
         p_hash->workspace[idx] = 0;
-        goto exception;
-    }
-
-    /* Process the collision chain */
-    while (p_node) {
-        if (p_key == p_node->p_key) {
-            /* Match found. Remove this node. */
-            remove_ok  = true;
-            break;
-        }
-        p_node = p_node->p_next;
-    }
-
-    /* Logic error if no removal candidates present */
-    assert(remove_ok);
-
-    if (NULL == p_node->p_prev) {
-        /* Remove from front */
-        p_node->p_next->p_prev = NULL;
-        p_node                 = p_node->p_next;
-        p_hash->workspace[idx] = p_node;
     }else {
-        /* Remove from middle or end */
-        if (p_node->p_prev) {
-            p_node->p_prev->p_next = p_node->p_next;
-        }
-
-        if (p_node->p_next) {
-            p_node->p_next->p_prev = p_node->p_prev;
-        }
+        remove_ok = hash_remove_collision(p_hash, p_key, idx);
     }
-    p_hash->collisions_curr--;
 
 exception:
-    if (remove_ok) {
-        p_hash->elems_curr--;
+    if (likely(remove_ok)) {
+        p_hash->pub.elems_curr--;
+        p_stats->removes++;
     }
 
     adts_sanity_exit(p_sanity);
@@ -288,61 +345,37 @@ exception:
  ****************************************************************************
  */
 int32_t
-adts_hash_insert( adts_hash_t      *p_adts_hash,
-                  adts_hash_node_t *p_adts_hash_node,
-                  void             *p_data,
-                  size_t            databytes,
-                  const void       *p_key )
+adts_hash_insert( adts_hash_t             *p_adts_hash,
+                  adts_hash_node_t        *p_adts_hash_node,
+                  adts_hash_node_public_t *p_input )
 {
-    hash_t        *p_hash   = (hash_t *) p_adts_hash;
-    size_t         idx      = 0;
-    int32_t        rc       = 0;
-    hash_node_t   *p_node   = (hash_node_t *) p_adts_hash_node;
-    adts_sanity_t *p_sanity = &(p_hash->sanity);
+    hash_t            *p_hash   = (hash_t *) p_adts_hash;
+    size_t             idx      = 0;
+    int32_t            rc       = 0;
+    hash_node_t       *p_node   = (hash_node_t *) p_adts_hash_node;
+    adts_sanity_t     *p_sanity = &(p_hash->sanity);
+    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
 
     adts_sanity_entry(p_sanity);
 
-    /* Key not validated. Duplicates and 0 value allowed */
-    assert(p_node);
-    assert(p_data);
-    assert(databytes);
-
-    /* Populate the consumers node structure */
-    p_node->p_data = p_data;
-    p_node->bytes  = databytes;
-    p_node->p_key  = p_key;
+    /* Clear and populate consumers node structure as read-only mode */
+    memset(p_node, 0, sizeof(*p_node));
+    memcpy(&(p_node->pub), p_input, sizeof(p_node->pub));
 
     /* Hash and insert node */
-    idx = p_hash->p_func(p_hash, p_key);
-    if (0 == p_hash->workspace[idx]) {
+    idx = p_hash->p_func(p_hash, p_node->pub.p_key);
+    if (likely(0 == p_hash->workspace[idx])) {
         p_hash->workspace[idx] = p_node;
     }else {
-        /* collision detected, perform chaining.  Note we allow duplicate
-         * keys and leave the instance management up to the consumer. */
-        hash_node_t *p_tmp = NULL;
-
-        /* duplicate key sanity */
-        p_tmp = p_hash->workspace[idx];
-        while (p_tmp) {
-            if (p_key == p_tmp->p_key) {
-                rc = EINVAL;
-                goto exception;
-            }
-            p_tmp = p_tmp->p_next;
+        /* Collision detected */
+        rc = hash_insert_collision(p_hash, p_node, idx);
+        if (rc) {
+            goto exception;
         }
-
-        /* Prepend node to collision list */
-        p_tmp                  = p_hash->workspace[idx];
-        p_hash->workspace[idx] = p_node;
-        p_node->p_next         = p_tmp;
-        p_tmp->p_prev          = p_node;
-
-        p_hash->collisions_curr++;
-        p_hash->collisions_max = MAX(p_hash->collisions_max,
-                                     p_hash->collisions_curr);
     }
 
-    p_hash->elems_curr++;
+    p_hash->pub.elems_curr++;
+    p_stats->inserts++;
 
 exception:
     adts_sanity_exit(p_sanity);
@@ -355,15 +388,68 @@ exception:
  *
  ****************************************************************************
  */
+adts_hash_node_t *
+adts_hash_find( adts_hash_t *p_adts_hash,
+                const void  *p_key )
+{
+    hash_t            *p_hash   = (hash_t *) p_adts_hash;
+    size_t             idx      = 0;
+    int32_t            rc       = 0;
+    hash_node_t       *p_tmp    = NULL;
+    hash_node_t       *p_node   = NULL;
+    adts_sanity_t     *p_sanity = &(p_hash->sanity);
+    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
+
+    adts_sanity_entry(p_sanity);
+
+    idx   = p_hash->p_func(p_hash, p_key);
+    p_tmp = p_hash->workspace[idx];
+
+    /* Find a match in the hash table, processing chains_curr _IF_present */
+    while (p_tmp) {
+        if (p_key == p_tmp->pub.p_key) {
+            /* match */
+            p_node = p_tmp;
+            break;
+        }
+        p_tmp = p_tmp->p_next;
+    }
+
+    if (p_node) {
+        p_stats->find_hits++;
+    }else {
+        p_stats->find_miss++;
+    }
+
+    adts_sanity_exit(p_sanity);
+    return (adts_hash_node_t *) p_node;
+} /* adts_hash_find() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 void
 adts_hash_destroy( adts_hash_t *p_adts_hash )
 {
     hash_t        *p_hash   = (hash_t *) p_adts_hash;
+    size_t         bytes    = 0;
     adts_sanity_t *p_sanity = &(p_hash->sanity);
 
     adts_sanity_entry(p_sanity);
 
+    /* clear the workspace memory, note that this take into accoung a hashtbl
+     * resize since we use the current elem count limit to determine the
+     * bytes of the workspace */
+    bytes = p_hash->pub.elems_limit * sizeof(p_hash->workspace[0]);
+    memset(p_hash->workspace, 0, bytes);
     free(p_hash->workspace);
+
+    /* Ensure proper cleanup to avoid false positives on accidental reuse */
+    bytes = sizeof(*p_hash);
+    memset(p_hash, 0, bytes);
     free(p_hash);
 
     /* No adts_sanity_exit() since we've freed the memory */
@@ -377,34 +463,70 @@ adts_hash_destroy( adts_hash_t *p_adts_hash )
  *
  ****************************************************************************
  */
-adts_hash_t *
-adts_hash_create( const size_t     elems,
-                  hash_func_type_t type )
+static int32_t
+hash_create_sanity( const adts_hash_create_t *p_op )
 {
-    hash_t      *p_hash      = NULL;
-    int32_t      rc          = 0;
-    hash_node_t *p_elems     = NULL;
-    adts_hash_t *p_adts_hash = NULL;
+    int32_t             rc   = 0;
+    adts_hash_options_t opts = p_op->options;
 
+    if (NULL == p_op->p_func) {
+        rc = EINVAL;
+        goto exception;
+    }
+
+    switch (opts) {
+        case ADTS_HASH_OPTS_NONE:
+            break;
+        default:
+            rc = EINVAL;
+    }
+
+exception:
+    return rc;
+} /* hash_create_sanity() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+adts_hash_t *
+adts_hash_create( const adts_hash_create_t *p_op )
+{
+    hash_t       *p_hash      = NULL;
+    int32_t       rc          = 0;
+    hash_node_t  *p_elems     = NULL;
+    adts_hash_t  *p_adts_hash = NULL;
+    const size_t  limit       = adts_ptrs_per_page();
+    //const size_t  elems       = adts_prime_ceiling(limit);
+    //FIXME: Temporary Test...
+    const size_t  elems       = 11;
+
+    assert(p_op);
     assert(adts_is_prime(elems));
 
-    p_adts_hash = calloc(1, sizeof(*p_hash));
+    rc = hash_create_sanity(p_op);
+    if (rc) {
+        goto exception;
+    }
+
+    p_adts_hash = adts_mem_zalloc(sizeof(*p_hash));
     if (NULL == p_adts_hash) {
         rc = ENOMEM;
         goto exception;
     }
 
-    p_elems = calloc(elems, sizeof(*(p_hash->workspace)));
+    p_elems = adts_mem_zalloc(elems * sizeof(p_hash->workspace[0]));
     if (NULL == p_elems) {
         rc = ENOMEM;
         goto exception;
     }
 
-    p_hash              = (hash_t *) p_adts_hash;
-    p_hash->hashtype    = type;
-    p_hash->workspace   = p_elems;
-    p_hash->elems_limit = elems;
-    p_hash->p_func      = hash_func_default;
+    p_hash                  = (hash_t *) p_adts_hash;
+    p_hash->workspace       = p_elems;
+    p_hash->pub.elems_limit = elems;
+    p_hash->p_func          = p_op->p_func;
 
 exception:
     if (rc) {
@@ -466,6 +588,21 @@ utest_hash_bytes( void )
 
 /*
  ****************************************************************************
+ * \details
+ *   this is clearly not the best hash function but it exists in the case
+ ****************************************************************************
+ */
+static size_t
+utest_hash_function( hash_t      *p_hash,
+                     const void  *p_key )
+{
+    size_t idx = (int32_t) p_key % p_hash->pub.elems_limit;
+
+    return idx;
+} /* utest_hash_function() */
+
+/*
+ ****************************************************************************
  * test control
  *
  ****************************************************************************
@@ -473,22 +610,23 @@ utest_hash_bytes( void )
 static void
 utest_control( void )
 {
+    #define UTEST_ELEMS (32)
+
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: display struck sizes");
-
         utest_hash_bytes();
     }
 
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: create destroy");
+        adts_hash_t       *p_hash = NULL;
+        adts_hash_create_t op     = {0};
 
-        size_t            elems  = 11;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
         adts_hash_destroy(p_hash);
     }
@@ -496,47 +634,55 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: display empty");
+        adts_hash_t       *p_hash = NULL;
+        adts_hash_create_t op     = {0};
 
-        size_t            elems  = 11;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
         adts_hash_display(p_hash);
         adts_hash_destroy(p_hash);
     }
 
+
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: remove empty");
+        int32_t            rc     = 0;
+        adts_hash_t       *p_hash = NULL;
+        adts_hash_create_t op     = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
         rc = adts_hash_remove(p_hash, 5);
         assert(rc);
         adts_hash_destroy(p_hash);
     }
 
+
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: insert one");
+        int32_t                  rc     = 0;
+        adts_hash_t             *p_hash = NULL;
+        adts_hash_node_t         node   = {0};
+        adts_hash_create_t       op     = {0};
+        adts_hash_node_public_t  input  = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
-        adts_hash_node_t  node   = {0};
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
-        rc = adts_hash_insert(p_hash, &(node), -1, -1, 5);
+
+        input.p_data = -1;
+        input.bytes  = -1;
+        input.p_key  = 5;
+        rc = adts_hash_insert(p_hash, &(node), &(input));
         assert(0 == rc);
+
         adts_hash_display(p_hash);
         adts_hash_destroy(p_hash);
     }
@@ -544,46 +690,58 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: duplicate keys");
-        #define UTEST_ELEMS (32)
-        size_t           key[]               = {5, 5, 5};
-        adts_hash_node_t node[ UTEST_ELEMS ] = {0};
+        size_t                   key[]                = {5, 5, 5};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
+
         for (int32_t i = 0; i < 3; i++) {
-            rc = adts_hash_insert(p_hash,
-                    &(node[i]), -1, sizeof(node[0]), key[i]);
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), input);
             if (0 < i) {
                 /* Second entry should fail with duplicate detection */
                 assert(rc);
             }
         }
+
         adts_hash_display(p_hash);
         adts_hash_destroy(p_hash);
     }
 
+
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: generate collisions");
-        #define UTEST_ELEMS (32)
-        size_t           key[]               = {5, 16, 27};
-        adts_hash_node_t node[ UTEST_ELEMS ] = {0};
+        size_t                   key[]                = {5, 16, 27};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
         for (int32_t i = 0; i < 3; i++) {
-            rc = adts_hash_insert(p_hash,
-                    &(node[i]), -1, sizeof(node[0]), key[i]);
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+            CDISPLAY(" ");
+            CDISPLAY("%p %p %p",
+                    input[i].p_data, input[i].bytes, input[i].p_key);
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
         }
         adts_hash_display(p_hash);
@@ -593,20 +751,27 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: insert one -> remove one");
+        int32_t                  rc     = 0;
+        adts_hash_t             *p_hash = NULL;
+        adts_hash_node_t         node   = {0};
+        adts_hash_create_t       op     = {0};
+        adts_hash_node_public_t  input  = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
-        adts_hash_node_t  node   = {0};
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
-        rc = adts_hash_insert(p_hash, &(node), -1, -1, 5);
+
+        input.p_data = -1;
+        input.bytes  = -1;
+        input.p_key  = 5;
+        rc = adts_hash_insert(p_hash, &(node), &(input));
         assert(0 == rc);
+
         adts_hash_display(p_hash);
         rc = adts_hash_remove(p_hash, 5);
         assert(0 == rc);
+
         printf("\n");
         adts_hash_display(p_hash);
         adts_hash_destroy(p_hash);
@@ -615,21 +780,24 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: generate collisions -> remove from collisions T -> H");
-        #define UTEST_ELEMS (32)
-        size_t           key[]               = {5, 16, 27};
-        adts_hash_node_t node[ UTEST_ELEMS ] = {0};
+        size_t                   key[]                = {5, 16, 27};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
 
         for (int32_t i = 0; i < 3; i++) {
-            rc = adts_hash_insert(p_hash,
-                    &(node[i]), -1, sizeof(node[0]), key[i]);
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
         }
         adts_hash_display(p_hash);
@@ -649,21 +817,24 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: generate collisions -> remove from collisions H -> T");
-        #define UTEST_ELEMS (32)
-        size_t           key[]               = {5, 16, 27};
-        adts_hash_node_t node[ UTEST_ELEMS ] = {0};
+        size_t                   key[]                = {5, 16, 27};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
 
         for (int32_t i = 0; i < 3; i++) {
-            rc = adts_hash_insert(p_hash,
-                    &(node[i]), -1, sizeof(node[0]), key[i]);
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
         }
         adts_hash_display(p_hash);
@@ -683,24 +854,66 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: generate collisions -> remove from collisions MID");
-        #define UTEST_ELEMS (32)
-        size_t           key[]               = {5, 16, 27};
-        adts_hash_node_t node[ UTEST_ELEMS ] = {0};
+        size_t                   key[]                = {5, 16, 27};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
-        size_t            elems  = 11;
-        int32_t           rc     = 0;
-        adts_hash_t      *p_hash = NULL;
-        hash_func_type_t  type   = HASH_TYPE_INTEGER;
+        op.p_func = utest_hash_function;
 
-        p_hash = adts_hash_create(elems, type);
+        p_hash = adts_hash_create(&op);
         assert(p_hash);
 
         for (int32_t i = 0; i < 3; i++) {
-            rc = adts_hash_insert(p_hash,
-                    &(node[i]), -1, sizeof(node[0]), key[i]);
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
         }
         adts_hash_display(p_hash);
+
+        CDISPLAY("remove: %d", key[1]);
+        rc = adts_hash_remove(p_hash, key[1]);
+        assert(0 == rc);
+
+        CDISPLAY("end");
+        adts_hash_display(p_hash);
+        adts_hash_destroy(p_hash);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: find");
+        size_t                   key[]                = {5, 16, 27};
+        int32_t                  rc                   = 0;
+        adts_hash_t             *p_hash               = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_node_t        *p_out                = NULL;
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
+
+        op.p_func = utest_hash_function;
+
+        p_hash = adts_hash_create(&op);
+        assert(p_hash);
+
+        for (int32_t i = 0; i < 3; i++) {
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
+            assert(0 == rc);
+        }
+        adts_hash_display(p_hash);
+
+        p_out = adts_hash_find(p_hash, key[1]);
+        assert(p_out);
+        assert(p_out->pub.p_key == key[1]);
 
         CDISPLAY("remove: %d", key[1]);
         rc = adts_hash_remove(p_hash, key[1]);
