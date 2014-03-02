@@ -18,26 +18,12 @@
 /*
  ****************************************************************************
  *  Future work items:
- *   x extend the hash to check for key validity on insert
- *   x extend to exppose the plublic data like the list services
- *
  *   - create a destroy sanity checker to inform of non-empty entries in table
  *   - allow for externally provided memory
+ *   - add time instrumentation to calculate resize jitter cost
+ *   - apply valgrind
+ *   - review oprofile
  *
- *   x Extend the collision detection logic to indicate max collisions per
- *     entry and current deepest entry
- *
- *   - create a calc function to determine the distribution.  Optionally
- *     perform on insert and assert of bad distribution
- *
- *   x allow for user provided hash function
- *   x default to integer hash function if no input function presented
- *
- *   x statistics for inserts / removes / searches (hash_statis)
- *   x create hash stats display / report function
- *
- *   - create a collision depth warning / threshold option hash create
- *     - assert / error whenver the limit is exceeded
  ****************************************************************************
  */
 
@@ -67,10 +53,19 @@ typedef struct hash_node_s {
 
 /*
  ****************************************************************************
- *
+ *  \details
+ *    default the elements to a prime value
  ****************************************************************************
  */
-#define HASH_DEFAULT_SLOTS         (7) //(adts_ptrs_per_page());
+#define HASH_DEFAULT_SLOTS  (7)
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   Triggers for resize operations
+ ****************************************************************************
+ */
 #define HASH_LOAD_TRIGGER_SHRINK (.25)
 #define HASH_LOAD_TRIGGER_GROW   (.75)
 
@@ -218,7 +213,8 @@ hash_display_worker( hash_t          *p_hash,
                      adts_snapshot_t *p_snap,
                      bool             private )
 {
-    adts_hash_stats_t *p_stats = &(p_hash->pub.stats);
+    adts_hash_stats_t  *p_stats  = &(p_hash->pub.stats);
+    adts_hash_resize_t *p_resize = &(p_hash->pub.resize);
 
     printf("\n");
     printf("---------------------------------------------------------------\n");
@@ -239,9 +235,9 @@ hash_display_worker( hash_t          *p_hash,
     printf("pub.stats.removes       = %u\n", p_stats->removes);
     printf("pub.stats.find_hits     = %u\n", p_stats->find_hits);
     printf("pub.stats.find_miss     = %u\n", p_stats->find_miss);
-    printf("pub.stats.resize_grow   = %u\n", p_stats->resize_grow);
-    printf("pub.stats.resize_shrink = %u\n", p_stats->resize_shrink);
-    printf("pub.stats.resize_error  = %u\n", p_stats->resize_error);
+    printf("pub.resize.grow         = %u\n", p_resize->grow);
+    printf("pub.resize.shrink       = %u\n", p_resize->shrink);
+    printf("pub.resize.error        = %u\n", p_resize->error);
 
     printf("pub.elems_curr          = %i\n", p_hash->pub.elems_curr);
     printf("pub.elems_limit         = %i\n", p_hash->pub.elems_limit);
@@ -276,7 +272,7 @@ hash_load_factor( hash_t *p_hash )
  *
  ****************************************************************************
  */
-static int32_t
+static void
 hash_resize_rehash( hash_t       *p_new,
                     const hash_t *p_old )
 {
@@ -287,38 +283,44 @@ hash_resize_rehash( hash_t       *p_new,
      * not removed from old table such that restore is possible if fail. */
     for (int32_t idx = 0; idx < limit; idx++) {
         /* Process each entry and chain encountered */
-        hash_node_t             *p_node = NULL;
-        adts_hash_node_public_t  input  = {0};
+        hash_node_t  *p_node = NULL;
 
         p_node = p_old->workspace[idx];
         while (p_node) {
+            hash_node_t             *next = p_node->p_next;
+            adts_hash_node_public_t input = {0};
+
             memcpy(&input, &(p_node->pub), sizeof(input));
             rc = hash_insert(p_new, p_node, &input);
             if (rc) {
-                assert(0);
+                /* Invariant violation */
+                assert(0 == rc);
                 goto exception;
             }
-            p_node = p_node->p_next;
+            p_node = next;
         }
     }
 
 exception:
-    return rc;
+    return;
 } /* hash_resize_rehash() */
 
 
 /*
  ****************************************************************************
  * \details
- *   Given a starting input limit, calculate the largest prime number which
- *   fits a resize of said limit.
+ *   Given a starting input limit, round up to the next pow2.  Proced to
+ *   grow or shrink to corresponding next pow2.  Then return largest prime
+ *   within the new pow2 ceiling.
  *
  ****************************************************************************
  */
 static size_t
-hash_resize_limit( size_t            limit,
+hash_resize_limit( size_t            val,
                    hash_resize_op_t  op )
 {
+    size_t limit = adts_pow2_round_up(val);
+
     switch (op) {
         case HASH_GROW:
             limit *= 2;
@@ -376,13 +378,10 @@ hash_resize( hash_t           *p_hash,
     new.workspace       = p_new;
     memset(&(new.pub.stats), 0, sizeof(new.pub.stats));
 
-    /* rehash the contents into the new hashtbl, old hashtbl is preserved */
-    rc = hash_resize_rehash(&new, p_hash);
-    if (rc) {
-        /* Error, free the new hashtbl memory */
-        free(p_new);
-        goto exception;
-    }
+    /* rehash the contents into the new hashtbl, old hashtbl is preserved
+     * since the error checks in this path are already validated via
+     * previous recursive opereraitions. */
+    hash_resize_rehash(&new, p_hash);
 
     /* clear and free the old hashtbl workspace */
     bytes = p_hash->pub.elems_limit * sizeof(p_hash->workspace[0]);
@@ -406,10 +405,11 @@ exception:
 static inline int32_t
 hash_resize_check_shrink( hash_t *p_hash )
 {
-    size_t             limit_new = 0;
-    int32_t            rc        = 0;
-    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
-    hash_resize_op_t   op        = HASH_SHRINK;
+    size_t              limit_new = 0;
+    int32_t             rc        = 0;
+    adts_hash_stats_t  *p_stats   = &(p_hash->pub.stats);
+    adts_hash_resize_t *p_resize  = &(p_hash->pub.resize);
+    hash_resize_op_t    op        = HASH_SHRINK;
 
     if (p_hash->resizing) {
         /* resize in progress */
@@ -425,10 +425,10 @@ hash_resize_check_shrink( hash_t *p_hash )
     if (HASH_LOAD_TRIGGER_SHRINK > p_stats->loadfactor) {
         rc = hash_resize(p_hash, op);
         if (rc) {
-            p_stats->resize_error++;
+            p_resize->error++;
             goto exception;
         }
-        p_stats->resize_shrink++;
+        p_resize->shrink++;
     }
 
 exception:
@@ -444,8 +444,9 @@ exception:
 static inline int32_t
 hash_resize_check_grow( hash_t *p_hash )
 {
-    int32_t            rc      = 0;
-    adts_hash_stats_t *p_stats = &(p_hash->pub.stats);
+    int32_t             rc       = 0;
+    adts_hash_stats_t  *p_stats  = &(p_hash->pub.stats);
+    adts_hash_resize_t *p_resize = &(p_hash->pub.resize);
 
     if (p_hash->resizing) {
         /* resize in progress */
@@ -455,10 +456,10 @@ hash_resize_check_grow( hash_t *p_hash )
     if (HASH_LOAD_TRIGGER_GROW < p_stats->loadfactor) {
         rc = hash_resize(p_hash, HASH_GROW);
         if (rc) {
-            p_stats->resize_error++;
+            p_resize->error++;
             goto exception;
         }
-        p_stats->resize_grow++;
+        p_resize->grow++;
     }
 
 exception:
@@ -583,11 +584,12 @@ static int32_t
 hash_remove( hash_t     *p_hash,
              const void *p_key )
 {
-    bool               remove_ok = false;
-    size_t             idx       = 0;
-    int32_t            rc        = 0;
-    hash_node_t       *p_node    = NULL;
-    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
+    bool               empty      = false;
+    bool               remove_ok  = false;
+    size_t             idx        = 0;
+    int32_t            rc         = 0;
+    hash_node_t       *p_node     = NULL;
+    adts_hash_stats_t *p_stats    = &(p_hash->pub.stats);
 
     idx    = p_hash->p_func(p_hash, p_key);
     p_node = p_hash->workspace[idx];
@@ -598,13 +600,8 @@ hash_remove( hash_t     *p_hash,
 
     if (likely(NULL == p_node->p_next)) {
         remove_ok              = true;
+        empty             = true;
         p_hash->workspace[idx] = 0;
-
-        /* Resize is relevant when empty slots exist */
-        rc = hash_resize_check_shrink(p_hash);
-        if (rc) {
-            goto exception;
-        }
     }else {
         remove_ok = hash_collision_remove(p_hash, p_key, idx);
     }
@@ -614,6 +611,15 @@ exception:
         p_hash->pub.elems_curr--;
         p_stats->removes++;
         p_stats->loadfactor = hash_load_factor(p_hash);
+
+        /* resize candidacy only after accounting complete */
+        if (unlikely(empty)) {
+            /* Resize is relevant when empty slots exist */
+            rc = hash_resize_check_shrink(p_hash);
+            if (rc) {
+                goto exception;
+            }
+        }
     }
 
     return rc;
@@ -631,9 +637,10 @@ hash_insert( hash_t                  *p_hash,
              hash_node_t             *p_node,
              adts_hash_node_public_t *p_input )
 {
-    size_t             idx      = 0;
-    int32_t            rc       = 0;
-    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
+    bool               collision = false;
+    size_t             idx       = 0;
+    int32_t            rc        = 0;
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
 
     /* Clear and populate consumers node structure as read-only mode */
     memset(p_node, 0, sizeof(*p_node));
@@ -644,13 +651,9 @@ hash_insert( hash_t                  *p_hash,
     if (likely(0 == p_hash->workspace[idx])) {
         p_hash->workspace[idx] = p_node;
     }else {
-        /* Collision detected. */
-        rc = hash_collision_insert(p_hash, p_node, idx);
-        if (rc) {
-            goto exception;
-        }
+        collision = true;
 
-        rc = hash_resize_check_grow(p_hash);
+        rc = hash_collision_insert(p_hash, p_node, idx);
         if (rc) {
             goto exception;
         }
@@ -659,6 +662,16 @@ hash_insert( hash_t                  *p_hash,
     p_hash->pub.elems_curr++;
     p_stats->inserts++;
     p_stats->loadfactor = hash_load_factor(p_hash);
+
+    /* resize candidate only after full accounting */
+    if (unlikely(collision)) {
+        rc = hash_resize_check_grow(p_hash);
+        if (rc) {
+            goto exception;
+        }
+    }
+
+    //hash_display(p_hash, NULL);
 
 exception:
     return rc;

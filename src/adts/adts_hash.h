@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
+#include <adts_snapshot.h>
+
 /**
  **************************************************************************
  * \details
@@ -22,6 +24,7 @@
 /**
  **************************************************************************
  * \details
+ *   Input parameters for node insertion
  *
  **************************************************************************
  */
@@ -31,18 +34,25 @@ typedef struct {
     void   *p_key;
 } adts_hash_node_public_t;
 
+
+/**
+ **************************************************************************
+ * \details
+ *   Public node READ ONLY contents
+ *
+ **************************************************************************
+ */
 typedef union {
     const char                    reserved[ ADTS_HASH_NODE_BYTES ];
     const adts_hash_node_public_t pub; /**< read only */
 } adts_hash_node_t;
 
 
-
-
 /**
  **************************************************************************
  * \details
- *   The following statistics are subject to change
+ *   Volatile hash statistics.  Contents are recalculated on each
+ *   resize operation
  *
  **************************************************************************
  */
@@ -56,14 +66,42 @@ typedef struct {
     size_t removes;
     size_t find_hits;
     size_t find_miss;
-    size_t resize_grow;
-    size_t resize_shrink;
-    size_t resize_error;
 } adts_hash_stats_t;
 
-#define ADTS_HASH_OPTS_NONE        (0) /**< Default */
+
+/**
+ **************************************************************************
+ * \details
+ *   lifetime resize statistics
+ *
+ **************************************************************************
+ */
+typedef struct {
+    size_t grow;
+    size_t shrink;
+    size_t error;
+} adts_hash_resize_t;
+
+
+/**
+ **************************************************************************
+ * \details
+ *   hash create options
+ *
+ **************************************************************************
+ */
+#define ADTS_HASH_OPTS_NONE                (0) /**< Default */
+#define ADTS_HASH_OPTS_DISABLE_RESIZE (1 << 1)
 typedef uint64_t adts_hash_options_t;
 
+
+/**
+ **************************************************************************
+ * \details
+ *   enforced type for consumer provided hash function.
+ *
+ **************************************************************************
+ */
 typedef size_t hash_idx_t;
 
 typedef struct {
@@ -72,12 +110,29 @@ typedef struct {
                                     const void    *p_key);
 } adts_hash_create_t;
 
+
+/**
+ **************************************************************************
+ * \details
+ *   Public READ ONLY hash contents
+ *
+ **************************************************************************
+ */
 typedef struct {
     size_t             elems_curr;  /**< current nodes in hash  */
     size_t             elems_limit; /**< hash slots available */
     adts_hash_stats_t  stats;       /**< Statistics */
+    adts_hash_resize_t resize;      /**< persistent resize stats */
 } adts_hash_public_t;
 
+
+/**
+ **************************************************************************
+ * \details
+ *   Public READ ONLY hash control / alloc structure
+ *
+ **************************************************************************
+ */
 typedef union {
     const char                reserved[ ADTS_HASH_BYTES ];
     const adts_hash_public_t  pub; /**< read only */
@@ -88,6 +143,7 @@ typedef union {
 /**
  **************************************************************************
  * \details
+ *   hash table display srevice
  *
  **************************************************************************
  */
@@ -106,10 +162,47 @@ typedef union {
     } while (0);
 
 
+/**
+ **************************************************************************
+ * \details
+ *   hash public prototypes
+ *
+ **************************************************************************
+ */
+bool
+adts_hash_is_empty( const adts_hash_t *p_adts_hash );
+
+bool
+adts_hash_is_not_empty( const adts_hash_t *p_adts_hash );
+
+size_t
+adts_hash_entries( const adts_hash_t *p_adts_hash );
+
+void
+adts_hash_display_worker( adts_hash_t     *p_adts_hash,
+                          char            *p_msg,
+                          adts_snapshot_t *p_snap );
+int32_t
+adts_hash_remove( adts_hash_t *p_adts_hash,
+                  const void  *p_key );
+int32_t
+adts_hash_insert( adts_hash_t             *p_adts_hash,
+                  adts_hash_node_t        *p_adts_hash_node,
+                  adts_hash_node_public_t *p_input );
+adts_hash_node_t *
+adts_hash_find( adts_hash_t *p_adts_hash,
+                const void  *p_key );
+void
+adts_hash_destroy( adts_hash_t *p_adts_hash );
+
+adts_hash_t *
+adts_hash_create( const adts_hash_create_t *p_op );
+
 
 /**
  **************************************************************************
  * \details
+ *   Unit Test prototypes
  *
  **************************************************************************
  */

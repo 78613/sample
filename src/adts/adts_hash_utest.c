@@ -394,12 +394,10 @@ utest_control( void )
         adts_hash_destroy(p_hash);
     }
 
-#if 0
-    //FIXME: Mssing members on resize...
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: trigger resize grow");
-        size_t                   key[]  = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14};
+        size_t                   key[]  = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
         size_t                   elems  = sizeof(key) / sizeof(key[0]);
         int32_t                  rc     = 0;
         adts_hash_t             *p_hash = NULL;
@@ -412,7 +410,7 @@ utest_control( void )
         p_hash = adts_hash_create(&op);
         assert(p_hash);
 
-        adts_hash_display(p_hash, "Start");
+        //adts_hash_display(p_hash, "Start");
         for (int32_t i = 0; i < elems; i++) {
             input[i].p_data = -1;
             input[i].bytes  = sizeof(node[i]);
@@ -420,21 +418,16 @@ utest_control( void )
 
             rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
-            CDISPLAY("loadfactor: %f %i / %i", p_hash->pub.stats.loadfactor,
-                                               p_hash->pub.elems_curr,
-                                               p_hash->pub.elems_limit);
         }
 
         adts_hash_display(p_hash, "End");
         adts_hash_destroy(p_hash);
     }
-#endif
 
-#if 0
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: trigger resize grow -> shrink");
-        size_t                   key[]  = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14};
+        size_t                   key[]  = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
         size_t                   elems  = sizeof(key) / sizeof(key[0]);
         int32_t                  rc     = 0;
         adts_hash_t             *p_hash = NULL;
@@ -454,31 +447,27 @@ utest_control( void )
 
             rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
             assert(0 == rc);
-            CDISPLAY("loadfactor: %f %i / %i", p_hash->pub.stats.loadfactor,
-                                               p_hash->pub.elems_curr,
-                                               p_hash->pub.elems_limit);
-            //adts_hash_display(p_hash, NULL);
+            CDISPLAY("load: %f  %2i / %2i",
+                    p_hash->pub.stats.loadfactor,
+                    p_hash->pub.elems_curr,
+                    p_hash->pub.elems_limit);
         }
+        adts_hash_display(p_hash, NULL);
 
         for (int32_t i = 0; i < elems; i++) {
             rc = adts_hash_remove(p_hash, key[i]);
-            //if (rc && (ENOMEM != rc)) {
-            //    assert(0);
-            //}
-            adts_hash_display(p_hash, NULL);
+            assert(0 == rc);
+            //adts_hash_display(p_hash, NULL);
+            CDISPLAY("load: %f  %2i / %2i",
+                    p_hash->pub.stats.loadfactor,
+                    p_hash->pub.elems_curr,
+                    p_hash->pub.elems_limit);
         }
 
         adts_hash_display(p_hash, NULL);
         adts_hash_destroy(p_hash);
     }
-#endif
 
-
-
-
-
-    //test shrink
-    //test shrink floor (ie. 11)
     //test grow -> find
     //test shrink -> find
 
