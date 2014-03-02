@@ -32,6 +32,9 @@ CFILES  += adts_queue.c
 CFILES  += adts_hexdump.c
 CFILES  += adts_snapshot.c
 
+CFILES  += adts_hash_utest.c
+
+
 # Everything below this line is standard Makefile logic:
 # ======================================================
 DEPS    += $(HFILES)
