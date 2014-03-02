@@ -108,6 +108,11 @@ typedef struct {
     adts_hash_options_t  options;  /**< options bitfield */
     hash_idx_t           (*p_func) (struct hash_s *p_hash,
                                     const void    *p_key);
+    union {
+        struct {
+            size_t slots; /**< static number of entries - ideally prime */
+        } disable_resize;
+    } opts;
 } adts_hash_create_t;
 
 

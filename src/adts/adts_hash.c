@@ -23,6 +23,8 @@
  *   - add time instrumentation to calculate resize jitter cost
  *   - apply valgrind
  *   - review oprofile
+ *   - IMPORTANT!!!
+ *     - implement disable resize with consumer provided default limit.
  *
  ****************************************************************************
  */
@@ -91,11 +93,10 @@ typedef struct hash_s {
     adts_hash_public_t pub;
 
     /**< private data */
-    volatile bool      resizing;
-    hash_node_t      **workspace;
-    adts_sanity_t      sanity;
-    hash_idx_t         (*p_func) (struct hash_s *p_hash,
-                                  const void    *p_key);
+    adts_hash_create_t    params;
+    volatile bool         resizing;
+    hash_node_t         **workspace;
+    adts_sanity_t         sanity;
 } hash_t;
 
 
@@ -215,6 +216,7 @@ hash_display_worker( hash_t          *p_hash,
 {
     adts_hash_stats_t  *p_stats  = &(p_hash->pub.stats);
     adts_hash_resize_t *p_resize = &(p_hash->pub.resize);
+    adts_hash_create_t *p_params = &(p_hash->params);
 
     printf("\n");
     printf("---------------------------------------------------------------\n");
@@ -246,7 +248,8 @@ hash_display_worker( hash_t          *p_hash,
         printf("p_hash->resizing        = %i\n", p_hash->resizing);
         printf("p_hash->workspace       = %i\n", p_hash->workspace);
         printf("p_hash->sanity.busy     = %i\n", p_hash->sanity.busy);
-        printf("p_hash->p_func          = %i\n", p_hash->p_func);
+        printf("p_hash->params.options  = %i\n", p_params->options);
+        printf("p_hash->params.p_func   = %i\n", p_params->p_func);
     }
 
     hash_display_workspace(p_hash);
@@ -265,6 +268,30 @@ hash_load_factor( hash_t *p_hash )
 {
     return ((float) p_hash->pub.elems_curr / (float) p_hash->pub.elems_limit);
 } /* hash_load_factor() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline bool
+hash_resize_disabled( hash_t *p_hash )
+{
+    return !!(ADTS_HASH_OPTS_DISABLE_RESIZE & p_hash->params.options);
+} /* hash_resize_disabled() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline bool
+hash_resize_enabled( hash_t *p_hash )
+{
+    return !(hash_resize_disabled(p_hash));
+} /* hash_resize_enabled() */
 
 
 /*
@@ -584,14 +611,15 @@ static int32_t
 hash_remove( hash_t     *p_hash,
              const void *p_key )
 {
-    bool               empty      = false;
-    bool               remove_ok  = false;
-    size_t             idx        = 0;
-    int32_t            rc         = 0;
-    hash_node_t       *p_node     = NULL;
-    adts_hash_stats_t *p_stats    = &(p_hash->pub.stats);
+    bool                empty     = false;
+    bool                remove_ok = false;
+    size_t              idx       = 0;
+    int32_t             rc        = 0;
+    hash_node_t        *p_node    = NULL;
+    adts_hash_stats_t  *p_stats   = &(p_hash->pub.stats);
+    adts_hash_create_t *p_params  = &(p_hash->params);
 
-    idx    = p_hash->p_func(p_hash, p_key);
+    idx    = p_params->p_func(p_hash, p_key);
     p_node = p_hash->workspace[idx];
     if (unlikely(NULL == p_node)) {
         rc = EINVAL;
@@ -637,17 +665,18 @@ hash_insert( hash_t                  *p_hash,
              hash_node_t             *p_node,
              adts_hash_node_public_t *p_input )
 {
-    bool               collision = false;
-    size_t             idx       = 0;
-    int32_t            rc        = 0;
-    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
+    bool                collision = false;
+    size_t              idx       = 0;
+    int32_t             rc        = 0;
+    adts_hash_stats_t  *p_stats   = &(p_hash->pub.stats);
+    adts_hash_create_t *p_params  = &(p_hash->params);
 
     /* Clear and populate consumers node structure as read-only mode */
     memset(p_node, 0, sizeof(*p_node));
     memcpy(&(p_node->pub), p_input, sizeof(p_node->pub));
 
     /* Hash and insert node */
-    idx = p_hash->p_func(p_hash, p_node->pub.p_key);
+    idx = p_params->p_func(p_hash, p_node->pub.p_key);
     if (likely(0 == p_hash->workspace[idx])) {
         p_hash->workspace[idx] = p_node;
     }else {
@@ -664,7 +693,7 @@ hash_insert( hash_t                  *p_hash,
     p_stats->loadfactor = hash_load_factor(p_hash);
 
     /* resize candidate only after full accounting */
-    if (unlikely(collision)) {
+    if (collision && hash_resize_enabled(p_hash)) {
         rc = hash_resize_check_grow(p_hash);
         if (rc) {
             goto exception;
@@ -680,7 +709,8 @@ exception:
 
 /*
  ****************************************************************************
- *
+ * \details
+ *   detect invalid inputs
  ****************************************************************************
  */
 static int32_t
@@ -695,7 +725,8 @@ hash_create_sanity( const adts_hash_create_t *p_op )
     }
 
     switch (opts) {
-        case ADTS_HASH_OPTS_NONE:
+        case ADTS_HASH_OPTS_NONE:           /**< fall through */
+        case ADTS_HASH_OPTS_DISABLE_RESIZE:
             break;
         default:
             rc = EINVAL;
@@ -821,17 +852,18 @@ adts_hash_node_t *
 adts_hash_find( adts_hash_t *p_adts_hash,
                 const void  *p_key )
 {
-    hash_t            *p_hash   = (hash_t *) p_adts_hash;
-    size_t             idx      = 0;
-    int32_t            rc       = 0;
-    hash_node_t       *p_tmp    = NULL;
-    hash_node_t       *p_node   = NULL;
-    adts_sanity_t     *p_sanity = &(p_hash->sanity);
-    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
+    hash_t             *p_hash   = (hash_t *) p_adts_hash;
+    size_t              idx      = 0;
+    int32_t             rc       = 0;
+    hash_node_t        *p_tmp    = NULL;
+    hash_node_t        *p_node   = NULL;
+    adts_sanity_t      *p_sanity = &(p_hash->sanity);
+    adts_hash_stats_t  *p_stats  = &(p_hash->pub.stats);
+    adts_hash_create_t *p_params = &(p_hash->params);
 
     adts_sanity_entry(p_sanity);
 
-    idx   = p_hash->p_func(p_hash, p_key);
+    idx   = p_params->p_func(p_hash, p_key);
     p_tmp = p_hash->workspace[idx];
 
     /* Find a match in the hash table, processing chains_curr _IF_present */
@@ -887,7 +919,6 @@ adts_hash_destroy( adts_hash_t *p_adts_hash )
 } /* adts_hash_destroy() */
 
 
-
 /*
  ****************************************************************************
  *
@@ -897,15 +928,21 @@ adts_hash_t *
 adts_hash_create( const adts_hash_create_t *p_op )
 {
     hash_t       *p_hash      = NULL;
+    size_t        elems       = 0;
     int32_t       rc          = 0;
     hash_node_t  *p_elems     = NULL;
     adts_hash_t  *p_adts_hash = NULL;
-    const size_t  dflt        = HASH_DEFAULT_SLOTS;
-    const size_t  limit       = adts_pow2_round_up(dflt);
-    const size_t  elems       = adts_prime_ceiling(limit);
 
     assert(p_op);
-    assert(adts_is_prime(elems));
+    if (ADTS_HASH_OPTS_DISABLE_RESIZE & p_op->options) {
+        elems = p_op->opts.disable_resize.slots;
+    }else {
+        size_t  dflt  = HASH_DEFAULT_SLOTS;
+        size_t  limit = adts_pow2_round_up(dflt);
+
+        elems = adts_prime_ceiling(limit);
+        assert(adts_is_prime(elems));
+    }
 
     rc = hash_create_sanity(p_op);
     if (rc) {
@@ -918,16 +955,18 @@ adts_hash_create( const adts_hash_create_t *p_op )
         goto exception;
     }
 
+
     p_elems = adts_mem_zalloc(elems * sizeof(p_hash->workspace[0]));
     if (NULL == p_elems) {
         rc = ENOMEM;
         goto exception;
     }
 
-    p_hash                  = (hash_t *) p_adts_hash;
+    p_hash = (hash_t *) p_adts_hash;
+    memcpy(&(p_hash->params), p_op, sizeof(*p_op));
+
     p_hash->workspace       = p_elems;
     p_hash->pub.elems_limit = elems;
-    p_hash->p_func          = p_op->p_func;
 
 exception:
     if (rc) {

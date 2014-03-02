@@ -468,6 +468,53 @@ utest_control( void )
         adts_hash_destroy(p_hash);
     }
 
+    CDISPLAY("=========================================================");
+    {
+        CDISPLAY("Test: disable resize with collisions and removals");
+        size_t                   key[]  = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        size_t                   elems  = sizeof(key) / sizeof(key[0]);
+        int32_t                  rc     = 0;
+        adts_hash_t             *p_hash = NULL;
+        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
+        adts_hash_create_t       op                   = {0};
+        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
+
+        op.options |= ADTS_HASH_OPTS_DISABLE_RESIZE;
+        op.opts.disable_resize.slots = 7;
+        op.p_func   = utest_hash_function;
+
+        p_hash = adts_hash_create(&op);
+        assert(p_hash);
+
+        for (int32_t i = 0; i < elems; i++) {
+            input[i].p_data = -1;
+            input[i].bytes  = sizeof(node[i]);
+            input[i].p_key  = key[i];
+
+            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
+            assert(0 == rc);
+            CDISPLAY("load: %f  %2i / %2i",
+                    p_hash->pub.stats.loadfactor,
+                    p_hash->pub.elems_curr,
+                    p_hash->pub.elems_limit);
+        }
+        adts_hash_display(p_hash, NULL);
+
+        for (int32_t i = 0; i < elems; i++) {
+            rc = adts_hash_remove(p_hash, key[i]);
+            assert(0 == rc);
+            //adts_hash_display(p_hash, NULL);
+            CDISPLAY("load: %f  %2i / %2i",
+                    p_hash->pub.stats.loadfactor,
+                    p_hash->pub.elems_curr,
+                    p_hash->pub.elems_limit);
+        }
+
+        adts_hash_display(p_hash, NULL);
+        adts_hash_destroy(p_hash);
+    }
+
+
     //test grow -> find
     //test shrink -> find
 
