@@ -125,17 +125,17 @@ static int32_t
 stack_resize( stack_t          *p_stack,
               stack_resize_op_t op )
 {
-    size_t        limit_new = p_stack->elems_limit * 2;
-    size_t        bytes     = limit_new * sizeof(*(p_stack->workspace));
+    size_t        limit_new = p_stack->elems_limit;
+    size_t        bytes     = 0;
     int32_t       rc        = 0;
     stack_node_t *p_tmp     = NULL;
 
     switch (op) {
         case STACK_GROW:
-            limit_new = p_stack->elems_limit * 2;
+            limit_new *= 2;
             break;
         case STACK_SHRINK:
-            limit_new = p_stack->elems_limit / 2;
+            limit_new /= 2;
             break;
         default:
             /* invalid op */
@@ -143,6 +143,7 @@ stack_resize( stack_t          *p_stack,
     }
 
     /* p_tmp used to handle error case and preserve the workspace */
+    bytes = limit_new * sizeof(p_stack->workspace[0]);
     p_tmp = realloc(p_stack->workspace, bytes);
     if (NULL == p_tmp) {
         rc = ENOMEM;

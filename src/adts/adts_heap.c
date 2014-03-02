@@ -100,17 +100,17 @@ static int32_t
 heap_resize( heap_t           *p_heap,
              heap_resize_op_t  op )
 {
-    size_t        limit_new = p_heap->elems_limit * 2;
-    size_t        bytes     = limit_new * sizeof(*(p_heap->workspace));
+    size_t        limit_new = p_heap->elems_limit;
+    size_t        bytes     = 0;
     int32_t       rc        = 0;
     heap_node_t *p_tmp      = NULL;
 
     switch (op) {
         case HEAP_GROW:
-            limit_new = p_heap->elems_limit * 2;
+            limit_new *= 2;
             break;
         case HEAP_SHRINK:
-            limit_new = p_heap->elems_limit / 2;
+            limit_new /= 2;
             break;
         default:
             /* invalid op */
@@ -118,6 +118,7 @@ heap_resize( heap_t           *p_heap,
     }
 
     /* p_tmp used to handle error case and preserve the workspace */
+    bytes = limit_new * sizeof(p_heap->workspace[0]);
     p_tmp = realloc(p_heap->workspace, bytes);
     if (NULL == p_tmp) {
         rc = ENOMEM;
