@@ -11,6 +11,7 @@
 #include <adts_math.h>
 #include <adts_hash.h>
 #include <adts_private.h>
+#include <adts_hexdump.h>
 #include <adts_services.h>
 
 
@@ -69,11 +70,33 @@ typedef struct hash_node_s {
  *
  ****************************************************************************
  */
+#define HASH_DEFAULT_SLOTS         (7) //(adts_ptrs_per_page());
+#define HASH_LOAD_TRIGGER_SHRINK (.25)
+#define HASH_LOAD_TRIGGER_GROW   (.75)
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+typedef enum {
+    HASH_GROW   = 0x22222222,
+    HASH_SHRINK = 0x55555555,
+} hash_resize_op_t;
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
 typedef struct hash_s {
     /**< public data  - consumer visible */
     adts_hash_public_t pub;
 
     /**< private data */
+    volatile bool      resizing;
     hash_node_t      **workspace;
     adts_sanity_t      sanity;
     hash_idx_t         (*p_func) (struct hash_s *p_hash,
@@ -81,6 +104,17 @@ typedef struct hash_s {
 } hash_t;
 
 
+/*
+ ****************************************************************************
+ * \details
+ *   Only define prototypes in file if absolutely necessary.  Ideally
+ *   define the function before use such that it's not necessary in most cases
+ ****************************************************************************
+ */
+static int32_t
+hash_insert( hash_t                  *p_hash,
+             hash_node_t             *p_node,
+             adts_hash_node_public_t *p_input );
 
 
 
@@ -95,13 +129,350 @@ typedef struct hash_s {
 ******************************************************************************/
 
 
+/**
+ **************************************************************************
+ * \details
+ *   Internal / Private use only - serialization disabled
+ *
+ **************************************************************************
+ */
+#define hash_display( _p_hash, _p_message )   \
+    do {                                      \
+        bool             _private = true;     \
+        adts_snapshot_t  _snap   = {0};       \
+        adts_snapshot_t *_p_snap = &(_snap);  \
+                                              \
+        /* Get the call properties */         \
+        adts_snapshot(_p_snap);               \
+                                              \
+        /* Perform the hexdump */             \
+        hash_display_worker( _p_hash,         \
+                             _p_message,      \
+                             _p_snap,         \
+                             _private );      \
+    } while (0);
+
+
+/**
+ **************************************************************************
+ * \details
+ *
+ **************************************************************************
+ */
+static void
+hash_display_workspace( hash_t *p_hash )
+{
+    size_t elems  = 0;
+    size_t digits = 0;
+
+    /* display the entire hash with dynamic width formatting */
+    elems  = p_hash->pub.elems_limit;
+    digits = adts_digits_decimal(elems);
+
+    /* Walk the workspace displaying each entry */
+    for (size_t idx = 0; idx < elems; idx++) {
+        char         chain  = ' ';
+        hash_node_t *p_node = p_hash->workspace[idx];
+
+        if (NULL == p_node) {
+            /* Sanity */
+            printf("[%*d]  node: %p \n", digits, idx, p_node);
+            continue;
+        }
+
+        if (p_node->p_next || p_node->p_prev) {
+            /* display chain identifier */
+            chain = 'c';
+        }
+
+        while (p_node) {
+            printf("[%*d]%c node: %p  vaddr: %p  bytes: %d \
+                    key: 0x%016llx %4lld  prev: %16p  next: %16p \n",
+                    digits,
+                    idx,
+                    chain,
+                    p_node,
+                    p_node->pub.p_data,
+                    p_node->pub.bytes,
+                    (int64_t) p_node->pub.p_key,
+                    (int64_t) p_node->pub.p_key,
+                    p_node->p_prev,
+                    p_node->p_next);
+
+            p_node = p_node->p_next;
+        }
+    }
+
+    return;
+} /* hash_display_workspace() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static void
+hash_display_worker( hash_t          *p_hash,
+                     char            *p_msg,
+                     adts_snapshot_t *p_snap,
+                     bool             private )
+{
+    adts_hash_stats_t *p_stats = &(p_hash->pub.stats);
+
+    printf("\n");
+    printf("---------------------------------------------------------------\n");
+    adts_snapshot_display(p_snap);
+    if (p_msg) {
+        printf(" Message: \"%s\"\n", p_msg);
+    }
+    printf("---------------------------------------------------------------\n");
+
+    /* Public contents */
+
+    printf("pub.stats.loadfactor    = %f\n", p_stats->loadfactor);
+    printf("pub.stats.coll_curr     = %u\n", p_stats->coll_curr);
+    printf("pub.stats.coll_max      = %u\n", p_stats->coll_max);
+    printf("pub.stats.chains_curr   = %u\n", p_stats->chains_curr);
+    printf("pub.stats.chains_depth  = %u\n", p_stats->chains_depth);
+    printf("pub.stats.inserts       = %u\n", p_stats->inserts);
+    printf("pub.stats.removes       = %u\n", p_stats->removes);
+    printf("pub.stats.find_hits     = %u\n", p_stats->find_hits);
+    printf("pub.stats.find_miss     = %u\n", p_stats->find_miss);
+    printf("pub.stats.resize_grow   = %u\n", p_stats->resize_grow);
+    printf("pub.stats.resize_shrink = %u\n", p_stats->resize_shrink);
+    printf("pub.stats.resize_error  = %u\n", p_stats->resize_error);
+
+    printf("pub.elems_curr          = %i\n", p_hash->pub.elems_curr);
+    printf("pub.elems_limit         = %i\n", p_hash->pub.elems_limit);
+
+    if (private) {
+        printf("p_hash->resizing        = %i\n", p_hash->resizing);
+        printf("p_hash->workspace       = %i\n", p_hash->workspace);
+        printf("p_hash->sanity.busy     = %i\n", p_hash->sanity.busy);
+        printf("p_hash->p_func          = %i\n", p_hash->p_func);
+    }
+
+    hash_display_workspace(p_hash);
+    return;
+} /* hash_display() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline float
+hash_load_factor( hash_t *p_hash )
+{
+    return ((float) p_hash->pub.elems_curr / (float) p_hash->pub.elems_limit);
+} /* hash_load_factor() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_resize_rehash( hash_t       *p_new,
+                    const hash_t *p_old )
+{
+    int32_t      rc    = 0;
+    const size_t limit = p_old->pub.elems_limit;
+
+    /* linear read of each old entry and rehash into new table.  Entries are
+     * not removed from old table such that restore is possible if fail. */
+    for (int32_t idx = 0; idx < limit; idx++) {
+        /* Process each entry and chain encountered */
+        hash_node_t             *p_node = NULL;
+        adts_hash_node_public_t  input  = {0};
+
+        p_node = p_old->workspace[idx];
+        while (p_node) {
+            memcpy(&input, &(p_node->pub), sizeof(input));
+            rc = hash_insert(p_new, p_node, &input);
+            if (rc) {
+                assert(0);
+                goto exception;
+            }
+            p_node = p_node->p_next;
+        }
+    }
+
+exception:
+    return rc;
+} /* hash_resize_rehash() */
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   Given a starting input limit, calculate the largest prime number which
+ *   fits a resize of said limit.
+ *
+ ****************************************************************************
+ */
+static size_t
+hash_resize_limit( size_t            limit,
+                   hash_resize_op_t  op )
+{
+    switch (op) {
+        case HASH_GROW:
+            limit *= 2;
+            break;
+        case HASH_SHRINK:
+            limit /= 2;
+            break;
+        default:
+            /* invalid op */
+            assert(0);
+    }
+
+    return adts_prime_ceiling(limit);
+} /* hash_resize_limit() */
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   It is assumed that a resize is serialized from all other operations.
+ *   This is enforced by having this function as static and the callers
+ *   performing ADTS sanity verification.
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_resize( hash_t           *p_hash,
+             hash_resize_op_t  op )
+{
+    size_t             limit_new = 0;
+    size_t             elems     = 0;
+    size_t             bytes     = 0;
+    hash_t             new       = {0};
+    int32_t            rc        = 0;
+    hash_node_t       *p_new     = NULL;
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
+
+    p_hash->resizing = true;
+
+    /* p_new used to handle error case and preserve the workspace */
+    limit_new = hash_resize_limit(p_hash->pub.elems_limit, op);
+    bytes     = limit_new * sizeof(p_hash->workspace[0]);
+    p_new     = adts_mem_zalloc(bytes);
+    if (NULL == p_new) {
+        rc = ENOMEM;
+        goto exception;
+    }
+
+    /* cpy old hashtbl properties into new temporary structure. */
+    memcpy(&(new), p_hash, sizeof(new));
+
+    /* set and clear new hashtbl properties */
+    new.pub.elems_curr  = 0;
+    new.pub.elems_limit = limit_new;
+    new.workspace       = p_new;
+    memset(&(new.pub.stats), 0, sizeof(new.pub.stats));
+
+    /* rehash the contents into the new hashtbl, old hashtbl is preserved */
+    rc = hash_resize_rehash(&new, p_hash);
+    if (rc) {
+        /* Error, free the new hashtbl memory */
+        free(p_new);
+        goto exception;
+    }
+
+    /* clear and free the old hashtbl workspace */
+    bytes = p_hash->pub.elems_limit * sizeof(p_hash->workspace[0]);
+    memset(p_hash->workspace, 0, bytes);
+    free(p_hash->workspace);
+
+    /* all is good, transition new hashtbl into old hashtbl memspace */
+    memcpy(p_hash, &(new), sizeof(*p_hash));
+
+exception:
+    p_hash->resizing = false;
+    return rc;
+} /* hash_resize() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline int32_t
+hash_resize_check_shrink( hash_t *p_hash )
+{
+    size_t             limit_new = 0;
+    int32_t            rc        = 0;
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
+    hash_resize_op_t   op        = HASH_SHRINK;
+
+    if (p_hash->resizing) {
+        /* resize in progress */
+        goto exception;
+    }
+
+    limit_new = hash_resize_limit(p_hash->pub.elems_limit, op);
+    if (HASH_DEFAULT_SLOTS > limit_new) {
+        /* Prevent shrink to less than min hashtbl slots */
+        goto exception;
+    }
+
+    if (HASH_LOAD_TRIGGER_SHRINK > p_stats->loadfactor) {
+        rc = hash_resize(p_hash, op);
+        if (rc) {
+            p_stats->resize_error++;
+            goto exception;
+        }
+        p_stats->resize_shrink++;
+    }
+
+exception:
+    return rc;
+} /* hash_resize_check_shrink() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline int32_t
+hash_resize_check_grow( hash_t *p_hash )
+{
+    int32_t            rc      = 0;
+    adts_hash_stats_t *p_stats = &(p_hash->pub.stats);
+
+    if (p_hash->resizing) {
+        /* resize in progress */
+        goto exception;
+    }
+
+    if (HASH_LOAD_TRIGGER_GROW < p_stats->loadfactor) {
+        rc = hash_resize(p_hash, HASH_GROW);
+        if (rc) {
+            p_stats->resize_error++;
+            goto exception;
+        }
+        p_stats->resize_grow++;
+    }
+
+exception:
+    return rc;
+} /* hash_resize_check_grow() */
+
+
 /*
  ****************************************************************************
  *
  ****************************************************************************
  */
 static bool
-hash_remove_collision( hash_t       *p_hash,
+hash_collision_remove( hash_t       *p_hash,
                        void         *p_key,
                        const size_t  idx )
 {
@@ -147,7 +518,7 @@ hash_remove_collision( hash_t       *p_hash,
     p_stats->chains_curr -= (NULL == p_tmp->p_next) ? 1 : 0;
 
     return remove_ok;
-} /* hash_remove_collision() */
+} /* hash_collision_remove() */
 
 
 /*
@@ -156,7 +527,7 @@ hash_remove_collision( hash_t       *p_hash,
  ****************************************************************************
  */
 static int32_t
-hash_insert_collision( hash_t      *p_hash,
+hash_collision_insert( hash_t      *p_hash,
                        hash_node_t *p_node,
                        const size_t idx )
 {
@@ -200,7 +571,126 @@ hash_insert_collision( hash_t      *p_hash,
 
 exception:
     return rc;
-} /* hash_insert_collision() */
+} /* hash_collision_insert() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_remove( hash_t     *p_hash,
+             const void *p_key )
+{
+    bool               remove_ok = false;
+    size_t             idx       = 0;
+    int32_t            rc        = 0;
+    hash_node_t       *p_node    = NULL;
+    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
+
+    idx    = p_hash->p_func(p_hash, p_key);
+    p_node = p_hash->workspace[idx];
+    if (unlikely(NULL == p_node)) {
+        rc = EINVAL;
+        goto exception;
+    }
+
+    if (likely(NULL == p_node->p_next)) {
+        remove_ok              = true;
+        p_hash->workspace[idx] = 0;
+
+        /* Resize is relevant when empty slots exist */
+        rc = hash_resize_check_shrink(p_hash);
+        if (rc) {
+            goto exception;
+        }
+    }else {
+        remove_ok = hash_collision_remove(p_hash, p_key, idx);
+    }
+
+exception:
+    if (likely(remove_ok)) {
+        p_hash->pub.elems_curr--;
+        p_stats->removes++;
+        p_stats->loadfactor = hash_load_factor(p_hash);
+    }
+
+    return rc;
+} /* hash_remove() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_insert( hash_t                  *p_hash,
+             hash_node_t             *p_node,
+             adts_hash_node_public_t *p_input )
+{
+    size_t             idx      = 0;
+    int32_t            rc       = 0;
+    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
+
+    /* Clear and populate consumers node structure as read-only mode */
+    memset(p_node, 0, sizeof(*p_node));
+    memcpy(&(p_node->pub), p_input, sizeof(p_node->pub));
+
+    /* Hash and insert node */
+    idx = p_hash->p_func(p_hash, p_node->pub.p_key);
+    if (likely(0 == p_hash->workspace[idx])) {
+        p_hash->workspace[idx] = p_node;
+    }else {
+        /* Collision detected. */
+        rc = hash_collision_insert(p_hash, p_node, idx);
+        if (rc) {
+            goto exception;
+        }
+
+        rc = hash_resize_check_grow(p_hash);
+        if (rc) {
+            goto exception;
+        }
+    }
+
+    p_hash->pub.elems_curr++;
+    p_stats->inserts++;
+    p_stats->loadfactor = hash_load_factor(p_hash);
+
+exception:
+    return rc;
+} /* hash_insert() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+hash_create_sanity( const adts_hash_create_t *p_op )
+{
+    int32_t             rc   = 0;
+    adts_hash_options_t opts = p_op->options;
+
+    if (NULL == p_op->p_func) {
+        rc = EINVAL;
+        goto exception;
+    }
+
+    switch (opts) {
+        case ADTS_HASH_OPTS_NONE:
+            break;
+        default:
+            rc = EINVAL;
+    }
+
+exception:
+    return rc;
+} /* hash_create_sanity() */
 
 
 /*
@@ -249,50 +739,20 @@ adts_hash_entries( const adts_hash_t *p_adts_hash )
  ****************************************************************************
  */
 void
-adts_hash_display( adts_hash_t *p_adts_hash )
+adts_hash_display_worker( adts_hash_t     *p_adts_hash,
+                          char            *p_msg,
+                          adts_snapshot_t *p_snap )
 {
-    size_t         elems    = 0;
-    size_t         digits   = 0;
+    bool           private  = false;
     hash_t        *p_hash   = (hash_t *) p_adts_hash;
     adts_sanity_t *p_sanity = &(p_hash->sanity);
 
     adts_sanity_entry(p_sanity);
-
-    /* display the entire hash with dynamic width formatting */
-    elems  = p_hash->pub.elems_limit;
-    digits = adts_digits_decimal(elems);
-
-    /* Walk the workspace displaying each entry */
-    for (size_t idx = 0; idx < elems; idx++) {
-        hash_node_t *p_node = p_hash->workspace[idx];
-
-        if (NULL == p_node) {
-            /* Sanity */
-            printf("[%*d]  node: %p \n", digits, idx, p_node);
-            continue;
-        }
-
-        while (p_node) {
-            printf("[%*d]  node: %p  vaddr: %p  bytes: %d \
-                    key: 0x%016llx %4lld  prev: %16p  next: %16p \n",
-                    digits,
-                    idx,
-                    p_node,
-                    p_node->pub.p_data,
-                    p_node->pub.bytes,
-                    (int64_t) p_node->pub.p_key,
-                    (int64_t) p_node->pub.p_key,
-                    p_node->p_prev,
-                    p_node->p_next);
-
-            p_node = p_node->p_next;
-        }
-    }
-
+    hash_display_worker(p_hash, p_msg, p_snap, private);
     adts_sanity_exit(p_sanity);
 
     return;
-} /* adts_hash_display() */
+} /* adts_hash_display_worker() */
 
 
 /*
@@ -304,37 +764,14 @@ int32_t
 adts_hash_remove( adts_hash_t *p_adts_hash,
                   const void  *p_key )
 {
-    bool               remove_ok = false;
     hash_t            *p_hash    = (hash_t *) p_adts_hash;
-    size_t             idx       = 0;
     int32_t            rc        = 0;
-    hash_node_t       *p_node    = NULL;
     adts_sanity_t     *p_sanity  = &(p_hash->sanity);
-    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
 
     adts_sanity_entry(p_sanity);
-
-    idx    = p_hash->p_func(p_hash, p_key);
-    p_node = p_hash->workspace[idx];
-    if (unlikely(NULL == p_node)) {
-        rc = EINVAL;
-        goto exception;
-    }
-
-    if (likely(NULL == p_node->p_next)) {
-        remove_ok              = true;
-        p_hash->workspace[idx] = 0;
-    }else {
-        remove_ok = hash_remove_collision(p_hash, p_key, idx);
-    }
-
-exception:
-    if (likely(remove_ok)) {
-        p_hash->pub.elems_curr--;
-        p_stats->removes++;
-    }
-
+    rc = hash_remove(p_hash, p_key);
     adts_sanity_exit(p_sanity);
+
     return rc;
 } /* adts_hash_remove() */
 
@@ -350,35 +787,14 @@ adts_hash_insert( adts_hash_t             *p_adts_hash,
                   adts_hash_node_public_t *p_input )
 {
     hash_t            *p_hash   = (hash_t *) p_adts_hash;
-    size_t             idx      = 0;
     int32_t            rc       = 0;
     hash_node_t       *p_node   = (hash_node_t *) p_adts_hash_node;
     adts_sanity_t     *p_sanity = &(p_hash->sanity);
-    adts_hash_stats_t *p_stats  = &(p_hash->pub.stats);
 
     adts_sanity_entry(p_sanity);
-
-    /* Clear and populate consumers node structure as read-only mode */
-    memset(p_node, 0, sizeof(*p_node));
-    memcpy(&(p_node->pub), p_input, sizeof(p_node->pub));
-
-    /* Hash and insert node */
-    idx = p_hash->p_func(p_hash, p_node->pub.p_key);
-    if (likely(0 == p_hash->workspace[idx])) {
-        p_hash->workspace[idx] = p_node;
-    }else {
-        /* Collision detected */
-        rc = hash_insert_collision(p_hash, p_node, idx);
-        if (rc) {
-            goto exception;
-        }
-    }
-
-    p_hash->pub.elems_curr++;
-    p_stats->inserts++;
-
-exception:
+    rc = hash_insert(p_hash, p_node, p_input);
     adts_sanity_exit(p_sanity);
+
     return rc;
 } /* adts_hash_insert() */
 
@@ -458,33 +874,6 @@ adts_hash_destroy( adts_hash_t *p_adts_hash )
 } /* adts_hash_destroy() */
 
 
-/*
- ****************************************************************************
- *
- ****************************************************************************
- */
-static int32_t
-hash_create_sanity( const adts_hash_create_t *p_op )
-{
-    int32_t             rc   = 0;
-    adts_hash_options_t opts = p_op->options;
-
-    if (NULL == p_op->p_func) {
-        rc = EINVAL;
-        goto exception;
-    }
-
-    switch (opts) {
-        case ADTS_HASH_OPTS_NONE:
-            break;
-        default:
-            rc = EINVAL;
-    }
-
-exception:
-    return rc;
-} /* hash_create_sanity() */
-
 
 /*
  ****************************************************************************
@@ -498,10 +887,9 @@ adts_hash_create( const adts_hash_create_t *p_op )
     int32_t       rc          = 0;
     hash_node_t  *p_elems     = NULL;
     adts_hash_t  *p_adts_hash = NULL;
-    const size_t  limit       = adts_ptrs_per_page();
-    //const size_t  elems       = adts_prime_ceiling(limit);
-    //FIXME: Temporary Test...
-    const size_t  elems       = 11;
+    const size_t  dflt        = HASH_DEFAULT_SLOTS;
+    const size_t  limit       = adts_pow2_round_up(dflt);
+    const size_t  elems       = adts_prime_ceiling(limit);
 
     assert(p_op);
     assert(adts_is_prime(elems));
@@ -539,7 +927,7 @@ exception:
         }
     }
 
-    return p_hash;
+    return (adts_hash_t *) p_hash;
 } /* adts_hash_create() */
 
 
@@ -588,357 +976,32 @@ utest_hash_bytes( void )
 
 /*
  ****************************************************************************
- * \details
- *   this is clearly not the best hash function but it exists in the case
- ****************************************************************************
- */
-static size_t
-utest_hash_function( hash_t      *p_hash,
-                     const void  *p_key )
-{
-    size_t idx = (int32_t) p_key % p_hash->pub.elems_limit;
-
-    return idx;
-} /* utest_hash_function() */
-
-/*
- ****************************************************************************
- * test control
+ * test private entrypoint
  *
  ****************************************************************************
  */
 static void
-utest_control( void )
+utest_adts_hash_private( void )
 {
-    #define UTEST_ELEMS (32)
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: display struck sizes");
-        utest_hash_bytes();
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: create destroy");
-        adts_hash_t       *p_hash = NULL;
-        adts_hash_create_t op     = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: display empty");
-        adts_hash_t       *p_hash = NULL;
-        adts_hash_create_t op     = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: remove empty");
-        int32_t            rc     = 0;
-        adts_hash_t       *p_hash = NULL;
-        adts_hash_create_t op     = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-        rc = adts_hash_remove(p_hash, 5);
-        assert(rc);
-        adts_hash_destroy(p_hash);
-    }
-
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: insert one");
-        int32_t                  rc     = 0;
-        adts_hash_t             *p_hash = NULL;
-        adts_hash_node_t         node   = {0};
-        adts_hash_create_t       op     = {0};
-        adts_hash_node_public_t  input  = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        input.p_data = -1;
-        input.bytes  = -1;
-        input.p_key  = 5;
-        rc = adts_hash_insert(p_hash, &(node), &(input));
-        assert(0 == rc);
-
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: duplicate keys");
-        size_t                   key[]                = {5, 5, 5};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-
-            rc = adts_hash_insert(p_hash, &(node[i]), input);
-            if (0 < i) {
-                /* Second entry should fail with duplicate detection */
-                assert(rc);
-            }
-        }
-
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: generate collisions");
-        size_t                   key[]                = {5, 16, 27};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-            CDISPLAY(" ");
-            CDISPLAY("%p %p %p",
-                    input[i].p_data, input[i].bytes, input[i].p_key);
-
-            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
-            assert(0 == rc);
-        }
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: insert one -> remove one");
-        int32_t                  rc     = 0;
-        adts_hash_t             *p_hash = NULL;
-        adts_hash_node_t         node   = {0};
-        adts_hash_create_t       op     = {0};
-        adts_hash_node_public_t  input  = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        input.p_data = -1;
-        input.bytes  = -1;
-        input.p_key  = 5;
-        rc = adts_hash_insert(p_hash, &(node), &(input));
-        assert(0 == rc);
-
-        adts_hash_display(p_hash);
-        rc = adts_hash_remove(p_hash, 5);
-        assert(0 == rc);
-
-        printf("\n");
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: generate collisions -> remove from collisions T -> H");
-        size_t                   key[]                = {5, 16, 27};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-
-            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
-            assert(0 == rc);
-        }
-        adts_hash_display(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            CDISPLAY("remove: %d", key[i]);
-            rc = adts_hash_remove(p_hash, key[i]);
-            assert(0 == rc);
-            adts_hash_display(p_hash);
-        }
-
-        CDISPLAY("end");
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: generate collisions -> remove from collisions H -> T");
-        size_t                   key[]                = {5, 16, 27};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-
-            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
-            assert(0 == rc);
-        }
-        adts_hash_display(p_hash);
-
-        for (int32_t i = 2; i >= 0; i--) {
-            CDISPLAY("remove: %d", key[i]);
-            rc = adts_hash_remove(p_hash, key[i]);
-            assert(0 == rc);
-            adts_hash_display(p_hash);
-        }
-
-        CDISPLAY("end");
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: generate collisions -> remove from collisions MID");
-        size_t                   key[]                = {5, 16, 27};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-
-            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
-            assert(0 == rc);
-        }
-        adts_hash_display(p_hash);
-
-        CDISPLAY("remove: %d", key[1]);
-        rc = adts_hash_remove(p_hash, key[1]);
-        assert(0 == rc);
-
-        CDISPLAY("end");
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: find");
-        size_t                   key[]                = {5, 16, 27};
-        int32_t                  rc                   = 0;
-        adts_hash_t             *p_hash               = NULL;
-        adts_hash_node_t         node[ UTEST_ELEMS ]  = {0};
-        adts_hash_node_t        *p_out                = NULL;
-        adts_hash_create_t       op                   = {0};
-        adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
-
-        op.p_func = utest_hash_function;
-
-        p_hash = adts_hash_create(&op);
-        assert(p_hash);
-
-        for (int32_t i = 0; i < 3; i++) {
-            input[i].p_data = -1;
-            input[i].bytes  = sizeof(node[i]);
-            input[i].p_key  = key[i];
-
-            rc = adts_hash_insert(p_hash, &(node[i]), &(input[i]));
-            assert(0 == rc);
-        }
-        adts_hash_display(p_hash);
-
-        p_out = adts_hash_find(p_hash, key[1]);
-        assert(p_out);
-        assert(p_out->pub.p_key == key[1]);
-
-        CDISPLAY("remove: %d", key[1]);
-        rc = adts_hash_remove(p_hash, key[1]);
-        assert(0 == rc);
-
-        CDISPLAY("end");
-        adts_hash_display(p_hash);
-        adts_hash_destroy(p_hash);
-    }
+    utest_hash_bytes();
 
     return;
-} /* utest_control() */
-
+} /* utest_adts_hash() */
 
 
 /*
  ****************************************************************************
- * test entrypoint
+ * test private entrypoint
  *
  ****************************************************************************
  */
 void
 utest_adts_hash( void )
 {
-    utest_control();
+    utest_adts_hash_private(); /**< private / whitebox tests */
+    utest_adts_hash_public();  /**< public / blackbox tests */
 
     return;
 } /* utest_adts_hash() */
+
+

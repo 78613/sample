@@ -42,11 +42,12 @@ typedef union {
 /**
  **************************************************************************
  * \details
+ *   The following statistics are subject to change
  *
  **************************************************************************
  */
 typedef struct {
-    size_t distribution;  //FIXME: Maket this float
+    float  loadfactor;    /**< number of slots in use */
     size_t coll_curr;     /**< current collisions */
     size_t coll_max;      /**< maximum collisions */
     size_t chains_curr;   /**< collision chains */
@@ -55,6 +56,9 @@ typedef struct {
     size_t removes;
     size_t find_hits;
     size_t find_miss;
+    size_t resize_grow;
+    size_t resize_shrink;
+    size_t resize_error;
 } adts_hash_stats_t;
 
 #define ADTS_HASH_OPTS_NONE        (0) /**< Default */
@@ -87,8 +91,33 @@ typedef union {
  *
  **************************************************************************
  */
+#define adts_hash_display( _p_hash, _p_message ) \
+    do {                                         \
+        adts_snapshot_t  _snap   = {0};          \
+        adts_snapshot_t *_p_snap = &(_snap);     \
+                                                 \
+        /* Get the call properties */            \
+        adts_snapshot(_p_snap);                  \
+                                                 \
+        /* Perform the hexdump */                \
+        adts_hash_display_worker( _p_hash,       \
+                                  _p_message,    \
+                                  _p_snap );     \
+    } while (0);
+
+
+
+/**
+ **************************************************************************
+ * \details
+ *
+ **************************************************************************
+ */
 void
 utest_adts_hash( void );
+
+void
+utest_adts_hash_public( void );
 
 
 #endif /* _H_ADTS_HASH */
