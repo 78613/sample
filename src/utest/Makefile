@@ -71,6 +71,6 @@ unittest.exe:
 	@echo "Unit Test:"
 	@echo "=========="
    #LD_LIBRARY_PATH=../adts/bin/:$(LD_LIBRARY_PATH)
-	bin/utest.exe 
+	valgrind --tool=memcheck --leak-check=yes -v bin/utest.exe 
 
 
