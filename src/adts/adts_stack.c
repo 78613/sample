@@ -31,7 +31,6 @@
  *    - what is the current limit, vs current use?
  *    - what is the max collision depth?
  *    - how many current collisions exist?
- *    - what is the current distribution: evaluates the hash function effectiveness
  *    - optional: force an error on threadhold / assupmtion violations
  *
  *    - adts_stack_create()     - simple defaults
@@ -94,10 +93,40 @@ typedef struct {
  ****************************************************************************
  */
 typedef struct {
-    size_t        elems_curr;
-    size_t        elems_limit;
-    stack_node_t *workspace;
-    adts_sanity_t sanity;
+    size_t push;
+    size_t pop;
+    size_t peek;
+    size_t height;
+    size_t height_max;
+} stack_stats_t;
+
+
+/**
+ **************************************************************************
+ * \details
+ *   lifetime resize statistics
+ *
+ **************************************************************************
+ */
+typedef struct {
+    size_t grow;
+    size_t shrink;
+    size_t error;
+} stack_resize_t;
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+typedef struct {
+    size_t          elems_curr;
+    size_t          elems_limit;
+    stack_node_t   *workspace;
+    adts_sanity_t   sanity;
+    stack_stats_t   stats;
+    stack_resize_t  resize;
 } stack_t;
 
 
@@ -112,6 +141,102 @@ typedef struct {
  * #       #     # #    ## #     #    #       #    #     # #    ## #     #
  * #        #####  #     #  #####     #      ###   ####### #     #  #####
 ******************************************************************************/
+
+
+/**
+ **************************************************************************
+ * \details
+ *   Internal / Private use only - serialization disabled
+ *
+ **************************************************************************
+ */
+#define stack_display( _p_stack, _p_message ) \
+    do {                                      \
+        bool             _private = true;     \
+        adts_snapshot_t  _snap   = {0};       \
+        adts_snapshot_t *_p_snap = &(_snap);  \
+                                              \
+        /* Get the call properties */         \
+        adts_snapshot(_p_snap);               \
+                                              \
+        /* Perform the hexdump */             \
+        stack_display_worker( _p_stack,       \
+                             _p_message,      \
+                             _p_snap,         \
+                             _private );      \
+    } while (0);
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static void
+stack_display_workspace( stack_t *p_stack )
+{
+    size_t elems  = p_stack->elems_curr;
+    size_t digits = 0;
+
+    /* display the entire stack with dynamic width formatting */
+    digits = adts_digits_decimal(elems);
+    for (size_t idx = 0; idx < elems; idx++) {
+        printf("[%*d]  data: %16p  bytes: %8d \n",
+                digits,
+                idx,
+                p_stack->workspace[idx].p_data,
+                p_stack->workspace[idx].bytes);
+    }
+
+    return;
+} /* stack_display_workspace() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static void
+stack_display_worker( stack_t         *p_stack,
+                      char            *p_msg,
+                      adts_snapshot_t *p_snap,
+                      bool             private )
+{
+    stack_stats_t  *p_stats  = &(p_stack->stats);
+    stack_resize_t *p_resize = &(p_stack->resize);
+
+    printf("\n");
+    printf("---------------------------------------------------------------\n");
+    adts_snapshot_display(p_snap);
+    if (p_msg) {
+        printf(" Message: \"%s\"\n", p_msg);
+    }
+    printf("---------------------------------------------------------------\n");
+
+    printf("stats.push           = %f\n", p_stats->push);
+    printf("stats.pop            = %f\n", p_stats->pop);
+    printf("stats.peek           = %f\n", p_stats->peek);
+    printf("stats.height         = %f\n", p_stats->height);
+    printf("stats.height_max     = %f\n", p_stats->height_max);
+
+    printf("resize.grow          = %u\n", p_resize->grow);
+    printf("resize.shrink        = %u\n", p_resize->shrink);
+    printf("resize.error         = %u\n", p_resize->error);
+
+    printf("elems_curr           = %i\n", p_stack->elems_curr);
+    printf("elems_limit          = %i\n", p_stack->elems_limit);
+
+    if (private) {
+        printf("p_stack->workspace   = %i\n", p_stack->workspace);
+        printf("p_stack->sanity.busy = %i\n", p_stack->sanity.busy);
+    }
+
+    stack_display_workspace(p_stack);
+
+    return;
+} /* stack_display_worker() */
+
 
 /*
  ****************************************************************************
@@ -144,11 +269,16 @@ stack_resize( stack_t          *p_stack,
 
     /* p_tmp used to handle error case and preserve the workspace */
     bytes = limit_new * sizeof(p_stack->workspace[0]);
-    p_tmp = realloc(p_stack->workspace, bytes);
+    p_tmp = adts_mem_zalloc(bytes);
     if (NULL == p_tmp) {
         rc = ENOMEM;
         goto exception;
     }
+
+    /* copy over the old contents into new stack */
+    bytes = p_stack->elems_limit * sizeof(p_stack->workspace[0]);
+    memcpy(p_tmp, p_stack->workspace, bytes);
+    free(p_stack->workspace);
 
     /* Set the new stack properties */
     p_stack->workspace   = p_tmp;
@@ -228,36 +358,27 @@ adts_stack_entries( adts_stack_t *p_adts_stack )
 } /* adts_stack_entries() */
 
 
+
 /*
  ****************************************************************************
  *
  ****************************************************************************
  */
 void
-adts_stack_display( adts_stack_t *p_adts_stack )
+adts_stack_display_worker( adts_stack_t   *p_adts_stack,
+                           char            *p_msg,
+                           adts_snapshot_t *p_snap )
 {
-    size_t         elems    = 0;
-    size_t         digits   = 0;
+    bool           private  = false;
     stack_t       *p_stack  = (stack_t *) p_adts_stack;
     adts_sanity_t *p_sanity = &(p_stack->sanity);
 
     adts_sanity_entry(p_sanity);
-
-    /* display the entire stack with dynamic width formatting */
-    elems  = adts_stack_entries(p_adts_stack);
-    digits = adts_digits_decimal(elems);
-    for (size_t idx = 0; idx < elems; idx++) {
-        printf("[%*d]  data: %16p  bytes: %8d \n",
-                digits,
-                idx,
-                p_stack->workspace[idx].p_data,
-                p_stack->workspace[idx].bytes);
-    }
-
+    stack_display_worker(p_stack, p_msg, p_snap, private);
     adts_sanity_exit(p_sanity);
 
     return;
-} /* adts_stack_display() */
+} /* adts_stack_display_worker() */
 
 
 /*
@@ -394,19 +515,19 @@ adts_stack_destroy( adts_stack_t *p_adts_stack )
 adts_stack_t *
 adts_stack_create( void )
 {
-    size_t        elems        = STACK_DEFAULT_ELEMS;
     int32_t       rc           = 0;
     stack_t      *p_stack      = NULL;
+    const size_t  elems        = STACK_DEFAULT_ELEMS;
     stack_node_t *p_elems      = NULL;
     adts_stack_t *p_adts_stack = NULL;
 
-    p_adts_stack = calloc(1, sizeof(*p_adts_stack));
+    p_adts_stack = adts_mem_zalloc(sizeof(*p_adts_stack));
     if (NULL == p_adts_stack) {
         rc = ENOMEM;
         goto exception;
     }
 
-    p_elems = calloc(elems, sizeof(*p_elems));
+    p_elems = adts_mem_zalloc(elems * sizeof(*p_elems));
     if (NULL == p_elems) {
         rc = ENOMEM;
         goto exception;
@@ -468,101 +589,17 @@ utest_stack_bytes( void )
 
 /*
  ****************************************************************************
+ * test private entrypoint
  *
  ****************************************************************************
  */
 static void
-utest_control( void )
+utest_adts_stack_private( void )
 {
-    size_t key[] = {-1,0,1,2,3,4,5,6,7,8,9};
-    size_t elems = sizeof(key) / sizeof(key[0]);
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: simple func test");
-
-        char          foo[64] = {0};
-        adts_stack_t *p_stack = NULL;
-
-        p_stack = adts_stack_create();
-        (void) adts_stack_push(p_stack, &(foo), sizeof(foo));
-        (void) adts_stack_peek(p_stack);
-        adts_stack_display(p_stack);
-        (void) adts_stack_pop(p_stack);
-        adts_stack_destroy(p_stack);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: stack push");
-        int32_t       rc      = 0;
-        adts_stack_t *p_stack = NULL;
-
-        p_stack = adts_stack_create();
-        assert(p_stack);
-
-        for (size_t idx = 0; idx < elems; idx++) {
-            rc = adts_stack_push(p_stack, key[idx], sizeof(key[idx]));
-            assert(0 == rc);
-            adts_stack_display(p_stack);
-        }
-
-        adts_stack_destroy(p_stack);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: stack push -> peek validate");
-
-        void         *val     = 0;
-        int32_t       rc      = 0;
-        adts_stack_t *p_stack = NULL;
-
-        p_stack = adts_stack_create();
-        assert(p_stack);
-
-        for (size_t idx = 0; idx < elems; idx++) {
-            rc = adts_stack_push(p_stack, key[idx], sizeof(key[idx]));
-            assert(0 == rc);
-        }
-
-        adts_stack_display(p_stack);
-
-        val = adts_stack_peek(p_stack);
-        assert(key[elems - 1] == val);
-
-        adts_stack_destroy(p_stack);
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: stack push -> pop");
-
-        void         *val     = 0;
-        int32_t       rc      = 0;
-        adts_stack_t *p_stack = NULL;
-
-        p_stack = adts_stack_create();
-        assert(p_stack);
-
-        for (size_t idx = 0; idx < elems; idx++) {
-            rc = adts_stack_push(p_stack, key[idx], sizeof(key[idx]));
-            assert(0 == rc);
-        }
-
-        adts_stack_display(p_stack);
-
-        for (int32_t idx = (elems - 1); idx >= 0; idx--) {
-            CDISPLAY("POP -------------------------------------");
-            (void) adts_stack_pop(p_stack);
-            adts_stack_display(p_stack);
-        }
-
-        adts_stack_destroy(p_stack);
-    }
+    utest_stack_bytes();
 
     return;
-} /* utest_control() */
+} /* utest_adts_stack() */
 
 
 /**
@@ -575,7 +612,8 @@ utest_control( void )
 void
 utest_adts_stack( void )
 {
-    utest_control();
+    utest_adts_stack_private(); /**< private / whitebox tests */
+    utest_adts_stack_public();  /**< public / blackbox tests */
 
     return;
 } /* utest_adts_stack() */
