@@ -237,6 +237,7 @@ hash_display_worker( hash_t          *p_hash,
     printf("pub.stats.removes       = %u\n", p_stats->removes);
     printf("pub.stats.find_hits     = %u\n", p_stats->find_hits);
     printf("pub.stats.find_miss     = %u\n", p_stats->find_miss);
+
     printf("pub.resize.grow         = %u\n", p_resize->grow);
     printf("pub.resize.shrink       = %u\n", p_resize->shrink);
     printf("pub.resize.error        = %u\n", p_resize->error);
@@ -248,6 +249,7 @@ hash_display_worker( hash_t          *p_hash,
         printf("p_hash->resizing        = %i\n", p_hash->resizing);
         printf("p_hash->workspace       = %i\n", p_hash->workspace);
         printf("p_hash->sanity.busy     = %i\n", p_hash->sanity.busy);
+
         printf("p_hash->params.options  = %i\n", p_params->options);
         printf("p_hash->params.p_func   = %i\n", p_params->p_func);
     }
@@ -383,7 +385,6 @@ hash_resize( hash_t           *p_hash,
     hash_t             new       = {0};
     int32_t            rc        = 0;
     hash_node_t       *p_new     = NULL;
-    adts_hash_stats_t *p_stats   = &(p_hash->pub.stats);
 
     p_hash->resizing = true;
 
