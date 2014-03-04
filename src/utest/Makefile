@@ -5,12 +5,14 @@ HFILES  += cci.h
 HFILES  += epi.h
 HFILES  += misc.h
 HFILES  += utest.h
+HFILES  += coursera.h
 
 CFILES  += pe.c
 CFILES  += cci.c
 CFILES  += epi.c
 CFILES  += misc.c
 CFILES  += utest.c
+CFILES  += coursera.c
 
 # Everything below this line is standard Makefile logic:
 # ======================================================
