@@ -84,8 +84,7 @@ typedef struct {
  *
  ****************************************************************************
  */
-//#define STACK_DEFAULT_ELEMS (4096 / sizeof(stack_node_t))
-#define STACK_DEFAULT_ELEMS (2)
+#define STACK_DEFAULT_ELEMS (4)
 
 
 /*
@@ -267,7 +266,7 @@ stack_resize_limit( size_t            val,
             assert(0);
     }
 
-    return adts_prime_ceiling(limit);
+    return limit;
 } /* stack_resize_limit() */
 
 
@@ -297,8 +296,8 @@ stack_resize( stack_t          *p_stack,
         goto exception;
     }
 
-    /* copy over the old contents into new stack */
-    bytes = p_stack->elems_limit * sizeof(p_stack->workspace[0]);
+    /* copy _current_ elements into new workspace */
+    bytes = p_stack->elems_curr * sizeof(p_stack->workspace[0]);
     memcpy(p_tmp, p_stack->workspace, bytes);
 
     /* Set new stack properties fast by deferring free() */
@@ -333,8 +332,9 @@ stack_resize_check_shrink( stack_t *p_stack )
         goto exception;
     }
 
-    /* Shrink if usage below .25 to avoid churn */
-    trigger = p_stack->elems_curr / 4;
+    /* Shrink if usage below .25 to avoid churn, note that the default is
+     * assumed to be >4, otherwise this is a  devide by 0 operation. */
+    trigger = p_stack->elems_limit / 4;
     if (p_stack->elems_curr < trigger) {
         rc = stack_resize(p_stack, op);
         if (rc) {

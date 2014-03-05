@@ -16,7 +16,7 @@ utest_control( void )
 {
     size_t key[] = {-1,0,1,2,3,4,5,6,7,8,9};
     size_t elems = sizeof(key) / sizeof(key[0]);
-
+#if 0
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: simple func test");
@@ -73,7 +73,7 @@ utest_control( void )
 
         adts_stack_destroy(p_stack);
     }
-
+#endif
     CDISPLAY("=========================================================");
     {
         CDISPLAY("Test: stack push -> pop");
