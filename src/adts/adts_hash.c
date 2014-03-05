@@ -248,6 +248,7 @@ hash_display_worker( hash_t          *p_hash,
     if (private) {
         printf("p_hash->resizing        = %i\n", p_hash->resizing);
         printf("p_hash->workspace       = %i\n", p_hash->workspace);
+
         printf("p_hash->sanity.busy     = %i\n", p_hash->sanity.busy);
 
         printf("p_hash->params.options  = %i\n", p_params->options);
@@ -430,7 +431,7 @@ exception:
  *
  ****************************************************************************
  */
-static inline int32_t
+static inline void
 hash_resize_check_shrink( hash_t *p_hash )
 {
     size_t              limit_new = 0;
@@ -460,7 +461,7 @@ hash_resize_check_shrink( hash_t *p_hash )
     }
 
 exception:
-    return rc;
+    return;
 } /* hash_resize_check_shrink() */
 
 
@@ -643,11 +644,8 @@ exception:
 
         /* resize candidacy only after accounting complete */
         if (unlikely(empty)) {
-            /* Resize is relevant when empty elements exist */
-            rc = hash_resize_check_shrink(p_hash);
-            if (rc) {
-                goto exception;
-            }
+            /* Resize is relevant when empty elements exist, */
+            hash_resize_check_shrink(p_hash);
         }
     }
 
