@@ -214,15 +214,15 @@ stack_display_worker( stack_t         *p_stack,
     }
     printf("---------------------------------------------------------------\n");
 
-    printf("stats.push           = %f\n", p_stats->push);
-    printf("stats.pop            = %f\n", p_stats->pop);
-    printf("stats.peek           = %f\n", p_stats->peek);
-    printf("stats.height         = %f\n", p_stats->height);
-    printf("stats.height_max     = %f\n", p_stats->height_max);
+    printf("stats.push           = %i\n", p_stats->push);
+    printf("stats.pop            = %i\n", p_stats->pop);
+    printf("stats.peek           = %i\n", p_stats->peek);
+    printf("stats.height         = %i\n", p_stats->height);
+    printf("stats.height_max     = %i\n", p_stats->height_max);
 
-    printf("resize.grow          = %u\n", p_resize->grow);
-    printf("resize.shrink        = %u\n", p_resize->shrink);
-    printf("resize.error         = %u\n", p_resize->error);
+    printf("resize.grow          = %i\n", p_resize->grow);
+    printf("resize.shrink        = %i\n", p_resize->shrink);
+    printf("resize.error         = %i\n", p_resize->error);
 
     printf("elems_curr           = %i\n", p_stack->elems_curr);
     printf("elems_limit          = %i\n", p_stack->elems_limit);
@@ -390,6 +390,7 @@ void *
 adts_stack_peek( adts_stack_t *p_adts_stack )
 {
     stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    stack_stats_t *p_stats  = &(p_stack->stats);
     adts_sanity_t *p_sanity = &(p_stack->sanity);
 
     adts_sanity_entry(p_sanity);
@@ -398,6 +399,7 @@ adts_stack_peek( adts_stack_t *p_adts_stack )
     stack_node_t *p_elem  = &(p_stack->workspace[idx]);
     void         *p_data  = p_elem->p_data;
 
+    p_stats->peek++;
     adts_sanity_exit(p_sanity);
 
     return p_data;
@@ -418,6 +420,7 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
     void          *p_data   = NULL;
     int32_t        idx      = 0;
     stack_node_t  *p_elem   = NULL;
+    stack_stats_t *p_stats  = &(p_stack->stats);
     adts_sanity_t *p_sanity = &(p_stack->sanity);
 
     adts_sanity_entry(p_sanity);
@@ -436,6 +439,8 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
     p_elem = &(p_stack->workspace[idx]);
 
     p_stack->elems_curr--;
+    p_stats->pop++;
+    p_stats->height--;
 
     p_data = p_elem->p_data;
     memset(p_elem, 0, sizeof(*p_elem));
@@ -458,8 +463,9 @@ adts_stack_push( adts_stack_t *p_adts_stack,
 {
     int32_t        rc       = 0;
     int32_t        idx      = 0;
-    stack_node_t  *p_elem   = NULL;
     stack_t       *p_stack  = (stack_t *) p_adts_stack;
+    stack_node_t  *p_elem   = NULL;
+    stack_stats_t *p_stats  = &(p_stack->stats);
     adts_sanity_t *p_sanity = &(p_stack->sanity);
 
     adts_sanity_entry(p_sanity);
@@ -477,6 +483,9 @@ adts_stack_push( adts_stack_t *p_adts_stack,
     p_elem->bytes  = bytes;
 
     p_stack->elems_curr++;
+    p_stats->push++;
+    p_stats->height++;
+    p_stats->height_max = MAX(p_stats->height, p_stats->height_max);
 
 exception:
     adts_sanity_exit(p_sanity);
