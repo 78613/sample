@@ -14,6 +14,7 @@ CFILES  += misc.c
 CFILES  += utest.c
 CFILES  += coursera.c
 
+
 # Everything below this line is standard Makefile logic:
 # ======================================================
 DEPS    += $(HFILES)
@@ -73,6 +74,6 @@ unittest.exe:
 	@echo "Unit Test:"
 	@echo "=========="
    #LD_LIBRARY_PATH=../adts/bin/:$(LD_LIBRARY_PATH)
-	valgrind --tool=memcheck --leak-check=yes -v bin/utest.exe 
+	bin/utest.exe 
 
 
