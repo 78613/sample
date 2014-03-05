@@ -480,7 +480,7 @@ utest_control( void )
         adts_hash_node_public_t  input[ UTEST_ELEMS ] = {0};
 
         op.options |= ADTS_HASH_OPTS_DISABLE_RESIZE;
-        op.opts.disable_resize.slots = 7;
+        op.opts.disable_resize.elems = 7;
         op.p_func   = utest_hash_function;
 
         p_hash = adts_hash_create(&op);

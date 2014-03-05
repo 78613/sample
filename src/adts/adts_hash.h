@@ -56,7 +56,7 @@ typedef union {
  **************************************************************************
  */
 typedef struct {
-    float  loadfactor;    /**< number of slots in use */
+    float  loadfactor;    /**< number of elements in use */
     size_t coll_curr;     /**< current collisions */
     size_t coll_max;      /**< maximum collisions */
     size_t chains_curr;   /**< collision chains */
@@ -109,7 +109,7 @@ typedef struct {
                                     const void    *p_key);
     union {
         struct {
-            size_t slots; /**< static number of entries - ideally prime */
+            size_t elems; /**< static number of entries - ideally prime */
         } disable_resize;
     } opts;
 } adts_hash_create_t;

@@ -59,7 +59,7 @@ typedef struct hash_node_s {
  *    default the elements to a prime value
  ****************************************************************************
  */
-#define HASH_DEFAULT_SLOTS  (7)
+#define HASH_DEFAULT_ELEMS  (7)
 
 
 /*
@@ -445,7 +445,7 @@ hash_resize_check_shrink( hash_t *p_hash )
     }
 
     limit_new = hash_resize_limit(p_hash->pub.elems_limit, op);
-    if (HASH_DEFAULT_SLOTS > limit_new) {
+    if (HASH_DEFAULT_ELEMS > limit_new) {
         /* Prevent shrink to less than min hashtbl slots */
         goto exception;
     }
@@ -643,7 +643,7 @@ exception:
 
         /* resize candidacy only after accounting complete */
         if (unlikely(empty)) {
-            /* Resize is relevant when empty slots exist */
+            /* Resize is relevant when empty elements exist */
             rc = hash_resize_check_shrink(p_hash);
             if (rc) {
                 goto exception;
@@ -936,9 +936,9 @@ adts_hash_create( const adts_hash_create_t *p_op )
 
     assert(p_op);
     if (ADTS_HASH_OPTS_DISABLE_RESIZE & p_op->options) {
-        elems = p_op->opts.disable_resize.slots;
+        elems = p_op->opts.disable_resize.elems;
     }else {
-        size_t  dflt  = HASH_DEFAULT_SLOTS;
+        size_t  dflt  = HASH_DEFAULT_ELEMS;
         size_t  limit = adts_pow2_round_up(dflt);
 
         elems = adts_prime_ceiling(limit);
