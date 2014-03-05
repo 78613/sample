@@ -93,7 +93,6 @@ utest_control( void )
         adts_stack_display(p_stack, NULL);
 
         for (int32_t idx = (elems - 1); idx >= 0; idx--) {
-            CDISPLAY("POP -------------------------------------");
             (void) adts_stack_pop(p_stack);
             adts_stack_display(p_stack, NULL);
         }
