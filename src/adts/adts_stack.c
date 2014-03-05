@@ -84,7 +84,8 @@ typedef struct {
  *
  ****************************************************************************
  */
-#define STACK_DEFAULT_ELEMS (4096 / sizeof(stack_node_t))
+//#define STACK_DEFAULT_ELEMS (4096 / sizeof(stack_node_t))
+#define STACK_DEFAULT_ELEMS (2)
 
 
 /*
@@ -238,6 +239,38 @@ stack_display_worker( stack_t         *p_stack,
 } /* stack_display_worker() */
 
 
+
+/*
+ ****************************************************************************
+ * \details
+ *   Given a starting input limit, round up to the next pow2.  Proced to
+ *   grow or shrink to corresponding next pow2.  Then return largest prime
+ *   within the new pow2 ceiling.
+ *
+ ****************************************************************************
+ */
+static size_t
+stack_resize_limit( size_t            val,
+                    stack_resize_op_t  op )
+{
+    size_t limit = adts_pow2_round_up(val);
+
+    switch (op) {
+        case STACK_GROW:
+            limit *= 2;
+            break;
+        case STACK_SHRINK:
+            limit /= 2;
+            break;
+        default:
+            /* invalid op */
+            assert(0);
+    }
+
+    return adts_prime_ceiling(limit);
+} /* stack_resize_limit() */
+
+
 /*
  ****************************************************************************
  * \details
@@ -250,22 +283,11 @@ static int32_t
 stack_resize( stack_t          *p_stack,
               stack_resize_op_t op )
 {
-    size_t        limit_new = p_stack->elems_limit;
+    size_t        limit_new = stack_resize_limit(p_stack->elems_limit, op);
     size_t        bytes     = 0;
     int32_t       rc        = 0;
+    stack_node_t *p_old     = NULL;
     stack_node_t *p_tmp     = NULL;
-
-    switch (op) {
-        case STACK_GROW:
-            limit_new *= 2;
-            break;
-        case STACK_SHRINK:
-            limit_new /= 2;
-            break;
-        default:
-            /* invalid op */
-            assert(0);
-    }
 
     /* p_tmp used to handle error case and preserve the workspace */
     bytes = limit_new * sizeof(p_stack->workspace[0]);
@@ -278,11 +300,12 @@ stack_resize( stack_t          *p_stack,
     /* copy over the old contents into new stack */
     bytes = p_stack->elems_limit * sizeof(p_stack->workspace[0]);
     memcpy(p_tmp, p_stack->workspace, bytes);
-    free(p_stack->workspace);
 
-    /* Set the new stack properties */
+    /* Set new stack properties fast by deferring free() */
+    p_old                = p_stack->workspace;
     p_stack->workspace   = p_tmp;
     p_stack->elems_limit = limit_new;
+    free(p_old);
 
 exception:
     return rc;
@@ -291,31 +314,65 @@ exception:
 
 /*
  ****************************************************************************
- * \details
- *   SIMPLE shrink candidacy logic to avoid excessive churn.
  *
  ****************************************************************************
  */
-static inline bool
-stack_resize_shrink_candidate( stack_t *p_stack )
+static inline void
+stack_resize_check_shrink( stack_t *p_stack )
 {
-    bool   rc      = false;
-    size_t trigger = 0;
+    size_t             limit_new = 0;
+    size_t             trigger   = 0;
+    int32_t            rc        = 0;
+    stack_stats_t     *p_stats   = &(p_stack->stats);
+    stack_resize_t    *p_resize  = &(p_stack->resize);
+    stack_resize_op_t  op        = STACK_SHRINK;
 
-    if (STACK_DEFAULT_ELEMS < p_stack->elems_limit) {
-        /* - growth beyond the default,
-         * - to avoid resize thrashing, only make resize candidacy when
-         *   the utilization is 25% of current, such that after resizing
-         *   the usage is at most 50%, */
-        trigger = p_stack->elems_limit / 4;
-        if (p_stack->elems_curr < trigger) {
-            /* Stack is under utilized based on current allocation */
-            rc = true;
-        }
+    limit_new = stack_resize_limit(p_stack->elems_limit, op);
+    if (STACK_DEFAULT_ELEMS > limit_new) {
+        /* Prevent shrink to less than min stacktbl slots */
+        goto exception;
     }
 
+    /* Shrink if usage below .25 to avoid churn */
+    trigger = p_stack->elems_curr / 4;
+    if (p_stack->elems_curr < trigger) {
+        rc = stack_resize(p_stack, op);
+        if (rc) {
+            p_resize->error++;
+            goto exception;
+        }
+        p_resize->shrink++;
+    }
+
+exception:
+    return;
+} /* stack_resize_check_shrink() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static inline int32_t
+stack_resize_check_grow( stack_t *p_stack )
+{
+    int32_t         rc       = 0;
+    stack_stats_t  *p_stats  = &(p_stack->stats);
+    stack_resize_t *p_resize = &(p_stack->resize);
+
+    if (unlikely(p_stack->elems_curr == p_stack->elems_limit)) {
+        rc = stack_resize(p_stack, STACK_GROW);
+        if (rc) {
+            p_resize->error++;
+            goto exception;
+        }
+        p_resize->grow++;
+    }
+
+exception:
     return rc;
-} /* stack_resize_shrink_candidate() */
+} /* stack_resize_check_grow() */
 
 
 /*
@@ -430,11 +487,6 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
         goto exception;
     }
 
-    if (stack_resize_shrink_candidate(p_stack)) {
-        /* Do not error out.  Try again on next pop operation */
-        (void) stack_resize(p_stack, STACK_SHRINK);
-    }
-
     idx    = p_stack->elems_curr - 1;
     p_elem = &(p_stack->workspace[idx]);
 
@@ -444,6 +496,8 @@ adts_stack_pop( adts_stack_t *p_adts_stack )
 
     p_data = p_elem->p_data;
     memset(p_elem, 0, sizeof(*p_elem));
+
+    stack_resize_check_shrink(p_stack);
 
 exception:
     adts_sanity_exit(p_sanity);
@@ -470,11 +524,9 @@ adts_stack_push( adts_stack_t *p_adts_stack,
 
     adts_sanity_entry(p_sanity);
 
-    if (unlikely(p_stack->elems_curr == p_stack->elems_limit)) {
-        rc = stack_resize(p_stack, STACK_GROW);
-        if (rc) {
-            goto exception;
-        }
+    rc = stack_resize_check_grow(p_stack);
+    if (rc) {
+        goto exception;
     }
 
     idx            = p_stack->elems_curr;

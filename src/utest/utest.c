@@ -20,7 +20,7 @@ utest_adts( void )
 //    utest_adts_hash();
 //    utest_adts_sort();
 //    utest_adts_tree();
-//    utest_adts_stack();
+    utest_adts_stack();
 //    utest_adts_queue();
 //    utest_adts_graph();
 //    utest_adts_hexdump();
@@ -33,12 +33,12 @@ utest_adts( void )
 static void
 utest_control( void )
 {
-    //utest_adts();
+    utest_adts();
     //utest_cci();
     //utest_epi();
     //utest_pe();
     //utest_misc();
-    utest_coursera();
+    //utest_coursera();
 
     return;
 } /* utest_control() */
