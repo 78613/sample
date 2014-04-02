@@ -2,6 +2,7 @@
 
 # ======================================================
 HFILES  += adts.h
+HFILES  += adts_rbt.h
 HFILES  += adts_bits.h
 HFILES  += adts_hash.h
 HFILES  += adts_heap.h
@@ -18,6 +19,7 @@ HFILES  += adts_snapshot.h
 HFILES  += adts_services.h
 
 # ======================================================
+CFILES  += adts_rbt.c
 CFILES  += adts_bits.c
 CFILES  += adts_hash.c
 CFILES  += adts_heap.c
@@ -33,6 +35,7 @@ CFILES  += adts_hexdump.c
 CFILES  += adts_snapshot.c
 
 # ======================================================
+CFILES  += adts_sort_utest.c
 CFILES  += adts_hash_utest.c
 CFILES  += adts_stack_utest.c
 
