@@ -77,3 +77,6 @@ unittest.exe:
 	bin/utest.exe 
 
 
+# command to export the *.so for compilation:
+# -------------------------------------------
+#export LD_LIBRARY_PATH=/gsa/ausgsa-h3/20/ocardona/web/public/Work/PROGS/public/sample/src/adts/bin:$LD_LIBRARY_PATH
