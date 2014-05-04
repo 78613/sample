@@ -13,8 +13,8 @@
  *
  **************************************************************************
  */
-#define ADTS_GRAPH_BYTES      (32)
-#define ADTS_GRAPH_NODE_BYTES (32)
+#define ADTS_GRAPH_BYTES      (64)
+#define ADTS_GRAPH_NODE_BYTES (64)
 
 
 /**

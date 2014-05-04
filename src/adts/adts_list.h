@@ -13,8 +13,8 @@
  *
  **************************************************************************
  */
-#define ADTS_LIST_BYTES      (32)
-#define ADTS_LIST_ELEM_BYTES (32)
+#define ADTS_LIST_BYTES      (64)
+#define ADTS_LIST_ELEM_BYTES (64)
 
 typedef struct {
     const char reserved[ ADTS_LIST_BYTES ];

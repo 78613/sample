@@ -79,4 +79,4 @@ unittest.exe:
 
 # command to export the *.so for compilation:
 # -------------------------------------------
-#export LD_LIBRARY_PATH=/gsa/ausgsa-h3/20/ocardona/web/public/Work/PROGS/public/sample/src/adts/bin:$LD_LIBRARY_PATH
+#export LD_LIBRARY_PATH="/home/parallels/Documents/github/sample/sample/src/adts/bin/":$LD_LIBRARY_PATH

@@ -15,8 +15,8 @@
  *
  *************************************************************************
  */
-#define ADTS_HASH_BYTES      (128)
-#define ADTS_HASH_NODE_BYTES (32)
+#define ADTS_HASH_BYTES      (256)
+#define ADTS_HASH_NODE_BYTES (64)
 
 
 
