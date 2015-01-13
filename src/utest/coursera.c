@@ -357,6 +357,7 @@ exception:
 
         if (p_mstack) {
             free(p_mstack);
+            p_mstack = NULL;
         }
     }
 
