@@ -6,6 +6,7 @@ HFILES  += epi.h
 HFILES  += misc.h
 HFILES  += utest.h
 HFILES  += coursera.h
+HFILES  += msft_test.h
 
 CFILES  += pe.c
 CFILES  += cci.c
@@ -13,6 +14,7 @@ CFILES  += epi.c
 CFILES  += misc.c
 CFILES  += utest.c
 CFILES  += coursera.c
+CFILES  += msft_test.c
 
 
 # Everything below this line is standard Makefile logic:

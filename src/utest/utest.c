@@ -7,12 +7,13 @@
 #include <epi.h>
 #include <misc.h>
 #include <coursera.h>
+#include <msft_test.h>
 
 
 static void
 utest_adts( void )
 {
-    utest_adts_rbt();
+//    utest_adts_rbt();
 //    utest_adts_bits();
 //    utest_adts_time();
 //    utest_adts_list();
@@ -34,12 +35,13 @@ utest_adts( void )
 static void
 utest_control( void )
 {
-    utest_adts();
+    //utest_adts();
     //utest_cci();
     //utest_epi();
     //utest_pe();
     //utest_misc();
     //utest_coursera();
+    utest_msft_test();
 
     return;
 } /* utest_control() */
