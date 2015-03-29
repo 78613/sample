@@ -1,5 +1,5 @@
-#ifndef _H_MSFT_TEST
-#define _H_MSFT_TEST
+#ifndef _H_WTEST
+#define _H_WTEST
 
 #include <string.h>
 #include <stdbool.h>
@@ -14,7 +14,7 @@
  **************************************************************************
  */
 void
-utest_msft_test( void );
+utest_wtest( void );
 
 
-#endif /* _H_MSFT_TEST */
+#endif /* _H_WTEST */

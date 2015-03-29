@@ -5,16 +5,16 @@ HFILES  += cci.h
 HFILES  += epi.h
 HFILES  += misc.h
 HFILES  += utest.h
+HFILES  += wtest.h
 HFILES  += coursera.h
-HFILES  += msft_test.h
 
 CFILES  += pe.c
 CFILES  += cci.c
 CFILES  += epi.c
 CFILES  += misc.c
 CFILES  += utest.c
+CFILES  += wtest.c
 CFILES  += coursera.c
-CFILES  += msft_test.c
 
 
 # Everything below this line is standard Makefile logic:
@@ -82,6 +82,7 @@ unittest.exe:
 # command to export the *.so for compilation:
 # -------------------------------------------
 #export LD_LIBRARY_PATH="/home/parallels/Documents/github/sample/sample/src/adts/bin/":$LD_LIBRARY_PATH
+#export LD_LIBRARY_PATH="/home/ocardona/Documents/sample/src/adts/bin/":$LD_LIBRARY_PATH
 
 # Step by step:
 # http://serverfault.com/questions/201709/how-to-set-ld-library-path-in-ubuntu

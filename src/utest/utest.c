@@ -6,8 +6,8 @@
 #include <cci.h>
 #include <epi.h>
 #include <misc.h>
+#include <wtest.h>
 #include <coursera.h>
-#include <msft_test.h>
 
 
 static void
@@ -41,7 +41,7 @@ utest_control( void )
     //utest_pe();
     //utest_misc();
     //utest_coursera();
-    utest_msft_test();
+    utest_wtest();
 
     return;
 } /* utest_control() */
