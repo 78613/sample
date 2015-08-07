@@ -50,7 +50,8 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
 
 # Use color enabled GCC output for readability
 # ======================================================
- CC       = colorgcc
+#CC       = colorgcc
+ CC       = clang
 
 # ======================================================
  CFLAGS  += -c 
