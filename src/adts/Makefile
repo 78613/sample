@@ -1,57 +1,27 @@
 
-
+# Files specified separetely.
 # ======================================================
-HFILES  += adts.h
-HFILES  += adts_rbt.h
-HFILES  += adts_bits.h
-HFILES  += adts_hash.h
-HFILES  += adts_heap.h
-HFILES  += adts_list.h
-HFILES  += adts_math.h
-HFILES  += adts_sort.h
-HFILES  += adts_time.h
-HFILES  += adts_tree.h
-HFILES  += adts_graph.h
-HFILES  += adts_stack.h
-HFILES  += adts_queue.h
-HFILES  += adts_hexdump.h
-HFILES  += adts_snapshot.h
-HFILES  += adts_services.h
-
-# ======================================================
-CFILES  += adts_rbt.c
-CFILES  += adts_bits.c
-CFILES  += adts_hash.c
-CFILES  += adts_heap.c
-CFILES  += adts_list.c
-CFILES  += adts_math.c
-CFILES  += adts_sort.c
-CFILES  += adts_time.c
-CFILES  += adts_tree.c
-CFILES  += adts_graph.c
-CFILES  += adts_stack.c
-CFILES  += adts_queue.c
-CFILES  += adts_hexdump.c
-CFILES  += adts_snapshot.c
-
-# ======================================================
-CFILES  += adts_sort_utest.c
-CFILES  += adts_hash_utest.c
-CFILES  += adts_stack_utest.c
+include Makefile.files
+H_FILES += $(xH_FILES)
+C_FILES += $(xC_FILES)
 
 
 # Everything below this line is standard Makefile logic:
 # ======================================================
-DEPS    += $(HFILES)
-OBJECTS += $(patsubst %.c,%.o,$(CFILES))    
+DEPS    += $(H_FILES)
+OBJECTS += $(patsubst %.c,%.o,$(C_FILES))    
+
 
 # declare non-files
+# ======================================================
 .PHONY: all 
+
 
 # Use color enabled GCC output for readability
 # ======================================================
-#CC       = colorgcc
- CC       = clang
+#CC       = colorgcc # C Compiler
+ CC       = clang    # C Compiler - improved diagnosability
+
 
 # ======================================================
  CFLAGS  += -c 
@@ -73,20 +43,27 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
 
 # ======================================================
 # "all" should always be the first defined target to ensure default build
-all: output
+all: prepare \
+     build   \
+     cleanup
 
-output: 
+prepare: 
 	@echo "" 
-	@echo "Cleanup:" 
+	@echo "Prepare:" 
 	@echo "========"
 	rm -fr bin
-
+build:
 	@echo ""
 	@echo "Compile Shared Library:"
 	@echo "======================="
-	mkdir -p bin
-	$(CC) -I ${PWD} -fPIC $(CFLAGS) $(CFILES) 
+	$(CC) -I ${PWD} -fPIC $(CFLAGS) $(C_FILES) 
 	$(CC) -I ${PWD} -shared -o libadts.so $(OBJECTS) -lrt
+
+cleanup:
+	@echo ""
+	@echo "Cleanup:"
+	@echo "========"
+	mkdir -p bin
 	mv *.[i,s,o] bin/
 	mv *.so bin/
 

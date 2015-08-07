@@ -1,26 +1,15 @@
 
+# Files specified separetely.
 # ======================================================
-HFILES  += pe.h
-HFILES  += cci.h
-HFILES  += epi.h
-HFILES  += misc.h
-HFILES  += utest.h
-HFILES  += wtest.h
-HFILES  += coursera.h
-
-CFILES  += pe.c
-CFILES  += cci.c
-CFILES  += epi.c
-CFILES  += misc.c
-CFILES  += utest.c
-CFILES  += wtest.c
-CFILES  += coursera.c
+include Makefile.files
+H_FILES += $(xH_FILES)
+C_FILES += $(xC_FILES)
 
 
 # Everything below this line is standard Makefile logic:
 # ======================================================
-DEPS    += $(HFILES)
-OBJECTS += $(patsubst %.c,%.o,$(CFILES))    
+DEPS    += $(H_FILES)
+OBJECTS += $(patsubst %.c,%.o,$(C_FILES))    
 
 # declare non-files
 .PHONY: all 
@@ -50,33 +39,37 @@ OBJECTS += $(patsubst %.c,%.o,$(CFILES))
  LPATHS += -L../adts/bin
  LNAMES += -ladts
 
-
  HPATHS += -I .
  HPATHS += -I ../adts/
-# ======================================================
 
 
 # ======================================================
 # "all" should always be the first defined target to ensure default build
-all: unittest.exe
+all: prepare  \
+     compile  \
+     cleanup  \
+     unittest
 
-unittest.exe: 
+prepare:
 	@echo ""
-	@echo "Cleanup:"
+	@echo "Prepare:"
 	@echo "========"
 	rm -fr bin
-
+compile:
 	@echo ""
 	@echo "Compile:"
 	@echo "========"
 	mkdir -p bin
-	$(CC) $(HPATHS) $(CFLAGS) -o bin/utest.exe $(CFILES) $(LPATHS) $(LNAMES)
+	$(CC) $(HPATHS) $(CFLAGS) -o bin/utest.exe $(C_FILES) $(LPATHS) $(LNAMES)
+cleanup:
+	@echo ""
+	@echo "Cleanup:"
+	@echo "========"
 	mv *.[i,s,o] bin/
-
+unittest:
 	@echo ""
 	@echo "Unit Test:"
 	@echo "=========="
-   #LD_LIBRARY_PATH=../adts/bin/:$(LD_LIBRARY_PATH)
 	bin/utest.exe 
 
 
@@ -87,6 +80,3 @@ unittest.exe:
 
 # Step by step:
 # http://serverfault.com/questions/201709/how-to-set-ld-library-path-in-ubuntu
-#
-#
-#
