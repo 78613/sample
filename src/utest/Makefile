@@ -11,14 +11,18 @@ C_FILES += $(xC_FILES)
 DEPS    += $(H_FILES)
 OBJECTS += $(patsubst %.c,%.o,$(C_FILES))    
 
+
 # declare non-files
+# ======================================================
 .PHONY: all 
+
 
 # ======================================================
 # Use color enabled GCC output for readability
 #CC       = colorgcc
  CC       = clang
 
+# ======================================================
  CFLAGS  += -g # Produce debugging information
  CFLAGS  += -fverbose-asm
  CFLAGS  += -w # hide all warnings 
