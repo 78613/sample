@@ -14,12 +14,13 @@ H_FILES += $(xH_FILES)
 C_FILES += $(xC_FILES)
 
 
+# Rules are common to all compilation units.	
 # ======================================================
-include Makefile.rules
- CC      = $(xCC)
- CFLAGS += $(xCFLAGS)
- CFLAGS += -c    # Compile only - No linking
- CFLAGS += -fPIC # Position independent code - dynamic linking | shared library
+include ../Makefile.rules
+CC      = $(xCC)
+CFLAGS += $(xCFLAGS)
+CFLAGS += -c    # Compile only - No linking
+CFLAGS += -fPIC # Position independent code - dynamic linking | shared library
 
 
 # Everything below this line is standard Makefile logic:

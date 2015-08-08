@@ -1,9 +1,32 @@
+# ======================================================
+# Makefile
+#    |
+#    +----- Makefile.files // Source Code
+#    +----- Makefile.rules // Common compulation rules
+#
+# ======================================================
+
 
 # Files specified separetely.
 # ======================================================
 include Makefile.files
 H_FILES += $(xH_FILES)
 C_FILES += $(xC_FILES)
+
+
+# Rules are common to all compilation units.	
+# ======================================================
+include ../Makefile.rules
+CC      = $(xCC)
+CFLAGS += $(xCFLAGS)
+
+
+# ======================================================
+LPATHS += -L../adts/bin
+LNAMES += -ladts
+
+HPATHS += -I .
+HPATHS += -I ../adts/
 
 
 # Everything below this line is standard Makefile logic:
@@ -17,38 +40,8 @@ OBJECTS += $(patsubst %.c,%.o,$(C_FILES))
 .PHONY: all 
 
 
-# ======================================================
-# Use color enabled GCC output for readability
-#CC       = colorgcc
- CC       = clang
-
-# ======================================================
- CFLAGS  += -g # Produce debugging information
- CFLAGS  += -fverbose-asm
- CFLAGS  += -w # hide all warnings 
- CFLAGS  += -save-temps
- CFLAGS  += -std=gnu99 # Use the c99 standard / with gnu extensions
- CFLAGS  += -Wall 
- CFLAGS  += -Wextra
- CFLAGS  += -O3
- CFLAGS  += -D__ADTS_DISPLAY
-
-#CFLAGS  += -v 
-#CFLAGS  += -Q # Print compiled function and statistics
-#CFLAGS  += -Werror 
-#CFLAGS  += -pedantic
-
-
-# ======================================================
- LPATHS += -L../adts/bin
- LNAMES += -ladts
-
- HPATHS += -I .
- HPATHS += -I ../adts/
-
-
-# ======================================================
 # "all" should always be the first defined target to ensure default build
+# ======================================================
 all: prepare  \
      compile  \
      cleanup  \
@@ -77,9 +70,6 @@ unittest:
 	bin/utest.exe 
 
 
-# command to export the *.so for compilation:
-# -------------------------------------------
-#export LD_LIBRARY_PATH="/home/ocardona/Documents/sample/src/adts/bin/":$LD_LIBRARY_PATH
-
-# Step by step:
-# http://serverfault.com/questions/201709/how-to-set-ld-library-path-in-ubuntu
+# ======================================================
+# If compilation failure, see README.md file in ths git repository.
+# ======================================================
