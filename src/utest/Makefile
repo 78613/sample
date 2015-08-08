@@ -79,7 +79,6 @@ unittest:
 
 # command to export the *.so for compilation:
 # -------------------------------------------
-#export LD_LIBRARY_PATH="/home/parallels/Documents/github/sample/sample/src/adts/bin/":$LD_LIBRARY_PATH
 #export LD_LIBRARY_PATH="/home/ocardona/Documents/sample/src/adts/bin/":$LD_LIBRARY_PATH
 
 # Step by step:
