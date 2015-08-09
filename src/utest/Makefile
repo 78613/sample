@@ -51,7 +51,7 @@ prepare:
 	@echo ""
 	@echo "Prepare:"
 	@echo "========"
-	rm -fr bin
+	rm -fr bin *.bc 
 compile:
 	@echo ""
 	@echo "Compile:"
@@ -63,6 +63,7 @@ cleanup:
 	@echo "Cleanup:"
 	@echo "========"
 	mv *.[i,s,o] bin/
+	mv *.bc bin/
 unittest:
 	@echo ""
 	@echo "Unit Test:"
