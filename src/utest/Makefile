@@ -9,14 +9,14 @@
 
 # Files specified separetely.
 # ======================================================
-include Makefile.files
+include Makefile.files.mk
 H_FILES += $(xH_FILES)
 C_FILES += $(xC_FILES)
 
 
 # Rules are common to all compilation units.	
 # ======================================================
-include ../Makefile.rules
+include ../Makefile.rules.mk
 CC      = $(xCC)
 CFLAGS += $(xCFLAGS)
 

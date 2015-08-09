@@ -13,3 +13,9 @@ Example
 =======
 export LD_LIBRARY_PATH="/home/ocardona/Documents/sample/src/adts/bin/":$LD_LIBRARY_PATH
 
+
+To diff the code use:
+====================
+# git difftool
+or
+# meld
