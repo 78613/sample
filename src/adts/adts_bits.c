@@ -438,6 +438,23 @@ utest_control( void )
     }
 
 
+    CDISPLAY("=========================================================");
+    {
+	/* Clear bits test */
+
+	#define IP    (1 << 5)
+	#define UDPV4 (1 << 6)
+	#define UDPV6 (1 << 7)
+	uint32_t val = 0;
+
+	val = (IP|UDPV4|UDPV6);
+	CDISPLAY("0x%8i", val);
+	adts_bit_display_32(val);
+	
+	val &= ~(UDPV4|UDPV6);
+	CDISPLAY("0x%8i", val);
+	adts_bit_display_32(val);
+    }
 
     return;
 } /* utest_control() */
