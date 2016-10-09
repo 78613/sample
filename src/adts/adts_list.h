@@ -1,7 +1,4 @@
-
-
-#ifndef _H_ADTS_LIST
-#define _H_ADTS_LIST
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -53,7 +50,4 @@ adts_list_is_not_empty( adts_list_t *p_adts_list );
  */
 void
 utest_adts_list( void );
-
-
-#endif /* _H_ADTS_LIST */
 

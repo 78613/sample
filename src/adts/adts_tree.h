@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_TREE
-#define _H_ADTS_TREE
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -53,5 +51,3 @@ typedef struct {
 void
 utest_adts_tree( void );
 
-
-#endif /* _H_ADTS_TREE */

@@ -1,7 +1,4 @@
-
-
-#ifndef _H_ADTS_QUEUE
-#define _H_ADTS_QUEUE
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -64,9 +61,5 @@ adts_queue_create( void );
 
 void
 utest_adts_queue( void );
-
-
-
-#endif /* _H_ADTS_QUEUE */
 
 

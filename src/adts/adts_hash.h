@@ -1,8 +1,4 @@
-
-
-
-#ifndef _H_ADTS_HASH
-#define _H_ADTS_HASH
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -215,7 +211,4 @@ utest_adts_hash( void );
 
 void
 utest_adts_hash_public( void );
-
-
-#endif /* _H_ADTS_HASH */
 

@@ -1,7 +1,4 @@
-
-#ifndef _H_ADTS
-#define _H_ADTS
-
+#pragma once
 
 #include <adts_bits.h>
 #include <adts_heap.h>
@@ -17,7 +14,4 @@
 #include <adts_hexdump.h>
 #include <adts_services.h>
 #include <adts_snapshot.h>
-
-
-#endif /* _H_ADTS */
 

@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_RBT
-#define _H_ADTS_RBT
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -36,5 +34,3 @@ typedef struct {
 void
 utest_adts_rbt( void );
 
-
-#endif /* _H_ADTS_RBT */

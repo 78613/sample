@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_SERVICES
-#define _H_ADTS_SERVICES
+#pragma once
 
 #include <sched.h> /* sched_getcpu() */
 #include <stdio.h> /* printf() */
@@ -60,9 +58,4 @@ adts_digits_decimal( int32_t val )
 
     return digits;
 } /* adts_digits_decimal() */
-
-
-#endif /* _H_ADTS_SERVICES */
-
-
 

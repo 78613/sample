@@ -1,12 +1,7 @@
-
-
-
-#ifndef _H_ADTS_HEXDUMP
-#define _H_ADTS_HEXDUMP
+#pragma once
 
 #include <stdint.h>
 #include <adts_snapshot.h>
-
 
 
 /*
@@ -40,7 +35,4 @@ utest_adts_hexdump( void );
                               _p_message,           \
                               _p_snap );            \
     } while (0);
-
-
-#endif /* _H_ADTS_HEXDUMP */
 

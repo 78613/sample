@@ -1,7 +1,4 @@
-
-
-#ifndef _H_ADTS_GRAPH
-#define _H_ADTS_GRAPH
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -34,7 +31,4 @@ typedef struct {
 
 void
 utest_adts_graph( void );
-
-
-#endif /* _H_ADTS_GRAPH */
 

@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_STACK
-#define _H_ADTS_STACK
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -100,7 +98,4 @@ void
 utest_adts_stack( void );
 void
 utest_adts_stack_public( void );
-
-
-#endif /* _H_ADTS_STACK */
 

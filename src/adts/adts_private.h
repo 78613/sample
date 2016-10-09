@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_PRIVATE
-#define _H_ADTS_PRIVATE
+#pragma once
 
 #include <stdint.h>
 #include <unistd.h>
@@ -132,8 +130,4 @@ adts_ptrs_per_page( void )
 {
     return getpagesize() / sizeof(void *);
 } /* adts_ptrs_per_page() */
-
-
-
-#endif /* _H_ADTS_PRIVATE */
 

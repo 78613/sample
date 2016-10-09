@@ -1,7 +1,4 @@
-
-
-#ifndef _H_ADTS_HEAP
-#define _H_ADTS_HEAP
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -76,9 +73,4 @@ adts_heap_create( adts_heap_type_t type );
 
 void
 utest_adts_heap( void );
-
-
-
-#endif /* _H_ADTS_HEAP */
-
 

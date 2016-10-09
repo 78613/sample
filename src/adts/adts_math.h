@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_MATH
-#define _H_ADTS_MATH
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -33,7 +31,4 @@ adts_pow2_round_down( const uint32_t input );
 
 void
 utest_adts_math( void );
-
-
-#endif /* _H_ADTS_MATH */
 

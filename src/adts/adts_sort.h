@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_SORT
-#define _H_ADTS_SORT
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -185,5 +183,3 @@ utest_adts_sort( void );
 void
 utest_adts_sort_public( void );
 
-
-#endif /* _H_ADTS_SORT */

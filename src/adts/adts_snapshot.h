@@ -1,7 +1,4 @@
-
-
-#ifndef _H_ADTS_SNAPSHOT
-#define _H_ADTS_SNAPSHOT
+#pragma once
 
 #include <inttypes.h>
 
@@ -67,7 +64,4 @@ utest_adts_snapshot( void );
                            __DATE__,       \
                            __TIME__ );
 
-
-
-#endif /* _H_ADTS_SNAPSHOT */
 

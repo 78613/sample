@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_TIME
-#define _H_ADTS_TIME
+#pragma once
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -10,6 +8,4 @@ adts_timestamp_approximate( void );
 
 void
 utest_adts_time( void );
-
-#endif /* _H_ADTS_TIME */
 

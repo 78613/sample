@@ -1,6 +1,4 @@
-
-#ifndef _H_ADTS_BITS
-#define _H_ADTS_BITS
+#pragma once
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -47,6 +45,4 @@ adts_bit_reverse( int32_t val );
 
 void
 utest_adts_bits( void );
-
-#endif /* _H_ADTS_BITS */
 
