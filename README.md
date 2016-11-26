@@ -11,7 +11,7 @@ See sample/src/utest/Makefile
 
 Example
 =======
-export LD_LIBRARY_PATH="/home/ocardona/Documents/C/sample/src/adts/bin/":$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="/home/ocardona/Documents/C/src/adts/bin/":$LD_LIBRARY_PATH
 
 
 To diff the code use:
