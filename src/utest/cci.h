@@ -1,8 +1,4 @@
-
-
-
-#ifndef _H_CCI
-#define _H_CCI
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -19,5 +15,3 @@
 void
 utest_cci( void );
 
-
-#endif /* _H_CCI */

@@ -1,6 +1,4 @@
-
-#ifndef _H_EPI
-#define _H_EPI
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -17,5 +15,3 @@
 void
 utest_epi( void );
 
-
-#endif /* _H_EPI */

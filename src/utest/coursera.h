@@ -1,13 +1,8 @@
-
-
-#ifndef _H_COURSERA
-#define _H_COURSERA
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
 #include <inttypes.h>
-
-
 
 /**
  **************************************************************************
@@ -18,5 +13,3 @@
 void
 utest_coursera( void );
 
-
-#endif /* _H_COURSERA */

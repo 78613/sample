@@ -1,7 +1,4 @@
-
-
-#ifndef _H_MISC
-#define _H_MISC
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -18,5 +15,3 @@
 void
 utest_misc( void );
 
-
-#endif /* _H_MISC */

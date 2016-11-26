@@ -1,7 +1,4 @@
-
-
-#ifndef _H_PE
-#define _H_PE
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -18,5 +15,3 @@
 void
 utest_pe( void );
 
-
-#endif /* _H_PE */

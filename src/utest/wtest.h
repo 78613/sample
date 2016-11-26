@@ -1,5 +1,4 @@
-#ifndef _H_WTEST
-#define _H_WTEST
+#pragma once
 
 #include <string.h>
 #include <stdbool.h>
@@ -16,5 +15,3 @@
 void
 utest_wtest( void );
 
-
-#endif /* _H_WTEST */
