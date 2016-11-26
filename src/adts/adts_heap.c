@@ -542,10 +542,12 @@ exception:
     if (rc) {
         if (p_elems) {
             free(p_elems);
+			p_elems = NULL;
         }
 
         if (p_adts_heap) {
             free(p_adts_heap);
+			p_adts_heap = NULL;
         }
     }
 

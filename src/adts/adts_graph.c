@@ -167,11 +167,11 @@ exception:
             }
         }
 
-        if (p_graph->adjlist) {
-            free(p_graph->adjlist);
-        }
-
         if (p_graph) {
+        	if (p_graph->adjlist) {
+            	free(p_graph->adjlist);
+				p_graph->adjlist = NULL;
+        	}
             free(p_graph);
             p_graph = NULL;
         }

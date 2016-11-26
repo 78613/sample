@@ -602,10 +602,12 @@ exception:
     if (rc) {
         if (p_elems) {
             free(p_elems);
+			p_elems = NULL;
         }
 
         if (p_adts_stack) {
             free(p_adts_stack);
+			p_adts_stack = NULL;
         }
     }
 

@@ -382,45 +382,44 @@ rbt_insert( rbt_node_t  *p_root,
         p_root->key    = key;
         p_root->p_data = p_data;
         CDISPLAY("%c", p_root->key);
-        goto success;
-    }
-    CDISPLAY("%c", key);
+	}else {
+		CDISPLAY("%c", key);
 
-    if (key < p_root->key) {
-        CDISPLAY("");
-        p_root->p_left = rbt_insert(p_root->p_left, key, p_data);
-    }else if (key > p_root->key) {
-        CDISPLAY("");
-        p_root->p_right = rbt_insert(p_root->p_right, key, p_data);
-    }else {
-        CDISPLAY("");
-        p_root->p_data = p_data;
-    }
+		if (key < p_root->key) {
+			CDISPLAY("");
+			p_root->p_left = rbt_insert(p_root->p_left, key, p_data);
+		}else if (key > p_root->key) {
+			CDISPLAY("");
+			p_root->p_right = rbt_insert(p_root->p_right, key, p_data);
+		}else {
+			CDISPLAY("");
+			p_root->p_data = p_data;
+		}
 
-    if (rbt_is_red(p_root->p_right) &&
-        (false == rbt_is_red(p_root->p_left))) {
-        CDISPLAY("");
-        p_root = rbt_rotate_left(p_root);
-    }
+		if (rbt_is_red(p_root->p_right) &&
+				(false == rbt_is_red(p_root->p_left))) {
+			CDISPLAY("");
+			p_root = rbt_rotate_left(p_root);
+		}
 
-    if (rbt_is_red(p_root->p_left) &&
-        (false == rbt_is_red(p_root->p_left->p_left))) {
-        CDISPLAY("");
-        p_root = rbt_rotate_right(p_root);
-    }
+		if (rbt_is_red(p_root->p_left) &&
+				(false == rbt_is_red(p_root->p_left->p_left))) {
+			CDISPLAY("");
+			p_root = rbt_rotate_right(p_root);
+		}
 
-    if (rbt_is_red(p_root->p_left) && rbt_is_red(p_root->p_right)) {
-        CDISPLAY("");
-        rbt_color_change(p_root);
-    }
+		if (rbt_is_red(p_root->p_left) && rbt_is_red(p_root->p_right)) {
+			CDISPLAY("");
+			rbt_color_change(p_root);
+		}
 
-    p_stats            = &(p_root->stats);
-    p_stats->children  = 1; /* self */
-    p_stats->children += rbt_nodes(p_root->p_left);
-    p_stats->children += rbt_nodes(p_root->p_right);
+		p_stats            = &(p_root->stats);
+		p_stats->children  = 1; /* self */
+		p_stats->children += rbt_nodes(p_root->p_left);
+		p_stats->children += rbt_nodes(p_root->p_right);
+	}
 
 exception:
-success:
     return p_root;
 } /* rbt_insert() */
 

@@ -971,10 +971,12 @@ exception:
     if (rc) {
         if (p_elems) {
             free(p_elems);
+			p_elems = NULL;
         }
 
         if (p_adts_hash) {
             free(p_adts_hash);
+			p_adts_hash = NULL;
         }
     }
 
