@@ -665,13 +665,13 @@ utest_list_bytes( void )
     CDISPLAY("[%u]", sizeof(list_t));
     CDISPLAY("[%u]", sizeof(adts_list_t));
 
-    _Static_assert(sizeof(list_t) < sizeof(adts_list_t),
+    _Static_assert(sizeof(list_t) <= sizeof(adts_list_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(list_node_t));
     CDISPLAY("[%u]", sizeof(adts_list_node_t));
 
-    _Static_assert(sizeof(list_node_t) < sizeof(adts_list_node_t),
+    _Static_assert(sizeof(list_node_t) <= sizeof(adts_list_node_t),
         "Mismatch structs detected");
 
     return;

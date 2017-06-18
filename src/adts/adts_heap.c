@@ -587,13 +587,13 @@ utest_heap_bytes( void )
     CDISPLAY("[%u]", sizeof(heap_t));
     CDISPLAY("[%u]", sizeof(adts_heap_t));
 
-    _Static_assert(sizeof(heap_t) < sizeof(adts_heap_t),
+    _Static_assert(sizeof(heap_t) <= sizeof(adts_heap_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(heap_node_t));
     CDISPLAY("[%u]", sizeof(adts_heap_node_t));
 
-    _Static_assert(sizeof(heap_node_t) < sizeof(adts_heap_node_t),
+    _Static_assert(sizeof(heap_node_t) <= sizeof(adts_heap_node_t),
         "Mismatch structs detected");
 
     return;

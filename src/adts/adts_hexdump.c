@@ -104,9 +104,10 @@ adts_hexdump_private( char            *p_data,
     printf("---------------------------------------------------------------\n");
     adts_snapshot_display(p_snap);
 
-    printf("\n");
+    printf("     Data:    %p \n", p_data);
+    printf("     Bytes:   %u \n", bytes);
     if (p_msg) {
-        printf("  Message: \"%s\"\n", p_msg);
+    	printf("     Message: \"%s\"\n", p_msg);
     }
     printf("---------------------------------------------------------------\n");
     printf("\n");

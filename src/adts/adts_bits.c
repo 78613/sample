@@ -450,7 +450,7 @@ utest_control( void )
 	val = (IP|UDPV4|UDPV6);
 	CDISPLAY("0x%8i", val);
 	adts_bit_display_32(val);
-	
+
 	val &= ~(UDPV4|UDPV6);
 	CDISPLAY("0x%8i", val);
 	adts_bit_display_32(val);

@@ -211,13 +211,13 @@ utest_graph_bytes( void )
     CDISPLAY("[%u]", sizeof(graph_t));
     CDISPLAY("[%u]", sizeof(adts_graph_t));
 
-    _Static_assert(sizeof(graph_t) < sizeof(adts_graph_t),
+    _Static_assert(sizeof(graph_t) <= sizeof(adts_graph_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(graph_node_t));
     CDISPLAY("[%u]", sizeof(adts_graph_node_t));
 
-    _Static_assert(sizeof(graph_node_t) < sizeof(adts_graph_node_t),
+    _Static_assert(sizeof(graph_node_t) <= sizeof(adts_graph_node_t),
         "Mismatch structs detected");
 
     return;

@@ -602,7 +602,7 @@ utest_rbt_bytes( void )
     CDISPLAY("[%u]", sizeof(rbt_node_t));
     CDISPLAY("[%u]", sizeof(adts_rbt_node_t));
 
-    _Static_assert(sizeof(rbt_node_t) < sizeof(adts_rbt_node_t),
+    _Static_assert(sizeof(rbt_node_t) <= sizeof(adts_rbt_node_t),
         "Mismatch structs detected");
 
     return;

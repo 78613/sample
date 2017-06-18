@@ -1014,13 +1014,13 @@ utest_hash_bytes( void )
     CDISPLAY("[%u]", sizeof(hash_t));
     CDISPLAY("[%u]", sizeof(adts_hash_t));
 
-    _Static_assert(sizeof(hash_t) < sizeof(adts_hash_t),
+    _Static_assert(sizeof(hash_t) <= sizeof(adts_hash_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(hash_node_t));
     CDISPLAY("[%u]", sizeof(adts_hash_node_t));
 
-    _Static_assert(sizeof(hash_node_t) < sizeof(adts_hash_node_t),
+    _Static_assert(sizeof(hash_node_t) <= sizeof(adts_hash_node_t),
         "Mismatch structs detected");
 
     return;

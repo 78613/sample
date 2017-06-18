@@ -33,6 +33,9 @@ int sched_getcpu(void);
         sprintf(_buffer, _format, ## __VA_ARGS__);                      \
         printf("%3d %4d %-25.25s %-30.30s %s\n",                        \
             sched_getcpu(), __LINE__, __FILE__, __FUNCTION__, _buffer); \
+                                                                        \
+        /* Serialize console output on exit/error */                    \
+        fflush(stdout);                                                 \
     } while(0);
 #else
     #define CDISPLAY(_format, ...) /* compile disabled */

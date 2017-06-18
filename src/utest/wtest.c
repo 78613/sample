@@ -104,73 +104,9 @@ test_print_array( uint64_t       *arr,
 
     return;
 } /* test_print_array() */
+
+
 // Only works for static arrays
-
-static void
-test_enum( void )
-{
-//typedef uint64_t ULONG;
-typedef uint64_t NDIS_OBJECT_HEADER;
-
-#define NDIS_SUPPORT_NDIS620 1
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#if 1
-//
-// What kind the receive scale capabilities the miniport can support, miniport drivers return
-// some of these flags as CapabilitiesFlags in a structure _NDIS_RECEIVE_SCALE_CAPABILITIES
-// when they get a query about theire receive side scale capabilities.
-//
-typedef enum _NDIS_RECEIVE_SCALE_CAPABILITIES_FLAGS_DEF {
-    //
-    // What kind of hash field type the miniport can support
-    //
-    NDIS_RSS_CAPS_HASH_TYPE_TCP_IPV4          = 0x00000100,
-    NDIS_RSS_CAPS_HASH_TYPE_TCP_IPV6          = 0x00000200,
-    NDIS_RSS_CAPS_HASH_TYPE_TCP_IPV6_EX       = 0x00000400,
-    NDIS_RSS_CAPS_MESSAGE_SIGNALED_INTERRUPTS = 0x01000000,
-    NDIS_RSS_CAPS_CLASSIFICATION_AT_ISR       = 0x00200000,
-    NDIS_RSS_CAPS_CLASSIFICATION_AT_DPC       = 0x00400000,
-    #if (NDIS_SUPPORT_NDIS620)
-        NDIS_RSS_CAPS_USING_MSI_X             = 0x08000000,
-    #endif // (NDIS_SUPPORT_NDIS620)
-
-    #if (NDIS_SUPPORT_NDIS630)
-        NDIS_RSS_CAPS_RSS_AVAILABLE_ON_PORTS  = 0x10000000,
-        NDIS_RSS_CAPS_SUPPORTS_MSI_X          = 0x20000000,
-    #endif // (NDIS_SUPPORT_NDIS630)
-} NDIS_RECEIVE_SCALE_CAPABILITIES_FLAGS_DEF;
-#endif
-
-//
-// Typedef to use as flags holder
-//
-typedef ULONG NDIS_RECEIVE_SCALE_CAPABILITIES_FLAGS;
-
-//
-// the following structure defines the Receive scale capabilities of the miniport
-//
-typedef struct _NDIS_RECEIVE_SCALE_CAPABILITIES
-{
-    NDIS_OBJECT_HEADER                      Header;
-    NDIS_RECEIVE_SCALE_CAPABILITIES_FLAGS   CapabilitiesFlags;
-    ULONG                                   NumberOfInterruptMessages;
-    ULONG                                   NumberOfReceiveQueues;
-    #if (NDIS_SUPPORT_NDIS630)
-        USHORT                              NumberOfIndirectionTableEntries;
-    #endif // (NDIS_SUPPORT_NDIS630)
-} NDIS_RECEIVE_SCALE_CAPABILITIES, *PNDIS_RECEIVE_SCALE_CAPABILITIES;
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    NDIS_RECEIVE_SCALE_CAPABILITIES  tmp   = {0};
-    NDIS_RECEIVE_SCALE_CAPABILITIES *p_tmp = &(tmp);
-
-    adts_hexdump(p_tmp, sizeof(*p_tmp), "foobar");
-
-    return;
-} /* test_enum() */
-
 
 static void
 utest_control( void )
@@ -224,12 +160,8 @@ utest_control( void )
             rc = test_bounds_invalid(srcStart, srcLen, destStart, destLen);
             CDISPLAY("%d", rc);
         }
-    }
 
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("Test: 3");
-        test_enum();
+
     }
 
     return;

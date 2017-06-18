@@ -510,13 +510,13 @@ utest_tree_bytes( void )
     CDISPLAY("[%u]", sizeof(tree_t));
     CDISPLAY("[%u]", sizeof(adts_tree_t));
 
-    _Static_assert(sizeof(tree_t) < sizeof(adts_tree_t),
+    _Static_assert(sizeof(tree_t) <= sizeof(adts_tree_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(tree_node_t));
     CDISPLAY("[%u]", sizeof(adts_tree_node_t));
 
-    _Static_assert(sizeof(tree_node_t) < sizeof(adts_tree_node_t),
+    _Static_assert(sizeof(tree_node_t) <= sizeof(adts_tree_node_t),
         "Mismatch structs detected");
 
     return;

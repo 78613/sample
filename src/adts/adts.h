@@ -8,6 +8,7 @@
 #include <adts_hash.h>
 #include <adts_math.h>
 #include <adts_tree.h>
+#include <adts_trie.h>
 #include <adts_graph.h>
 #include <adts_queue.h>
 #include <adts_stack.h>

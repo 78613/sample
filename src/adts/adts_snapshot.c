@@ -145,7 +145,7 @@ adts_snapshot_private( adts_snapshot_t *p_adt_snap,
 static void
 utest_snapshot_bytes( void )
 {
-    _Static_assert(sizeof(snapshot_t) < sizeof(adts_snapshot_t),
+    _Static_assert(sizeof(snapshot_t) <= sizeof(adts_snapshot_t),
         "Mismatch structs detected");
 
     CDISPLAY("[%u]", sizeof(snapshot_t));

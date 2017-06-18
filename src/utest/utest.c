@@ -14,6 +14,7 @@ static void
 utest_adts( void )
 {
 //    utest_adts_rbt();
+    utest_adts_eyec();
 //    utest_adts_bits();
 //    utest_adts_time();
 //    utest_adts_list();
@@ -22,6 +23,7 @@ utest_adts( void )
 //    utest_adts_hash();
 //    utest_adts_sort();
 //    utest_adts_tree();
+//    utest_adts_trie();
 //    utest_adts_stack();
 //    utest_adts_queue();
 //    utest_adts_graph();
@@ -41,7 +43,7 @@ utest_control( void )
     //utest_pe();
     //utest_misc();
     //utest_coursera();
-    utest_wtest();
+    //utest_wtest();
 
     return;
 } /* utest_control() */
