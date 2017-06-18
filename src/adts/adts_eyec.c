@@ -152,7 +152,7 @@ utest_eyec_bytes( void )
     CDISPLAY("[%u]", sizeof(eyec_t));
     CDISPLAY("[%u]", sizeof(adts_eyec_t));
 
-    _Static_assert(sizeof(eyec_t) < sizeof(adts_eyec_t),
+    _Static_assert(sizeof(eyec_t) <= sizeof(adts_eyec_t),
         "Mismatch structs detected");
 
     return;
