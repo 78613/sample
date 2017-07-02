@@ -96,6 +96,4 @@ adts_stack_create( void );
  */
 void
 utest_adts_stack( void );
-void
-utest_adts_stack_public( void );
 

@@ -209,6 +209,3 @@ adts_hash_create( const adts_hash_create_t *p_op );
 void
 utest_adts_hash( void );
 
-void
-utest_adts_hash_public( void );
-

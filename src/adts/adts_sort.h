@@ -180,6 +180,4 @@ adts_sort_quick( int32_t arr[],
  */
 void
 utest_adts_sort( void );
-void
-utest_adts_sort_public( void );
 

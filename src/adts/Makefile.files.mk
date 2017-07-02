@@ -37,8 +37,3 @@ xC_FILES  += adts_queue.c
 xC_FILES  += adts_hexdump.c
 xC_FILES  += adts_snapshot.c
 
-# ======================================================
-xC_FILES  += adts_sort_utest.c
-xC_FILES  += adts_hash_utest.c
-xC_FILES  += adts_stack_utest.c
-
