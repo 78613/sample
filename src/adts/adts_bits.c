@@ -41,7 +41,7 @@ adts_bit_display_32( int32_t val )
         arr[BIT_WIDTH_32 - (1 + i)] = v;
     }
 
-    CDISPLAY("%10i 0b%s", val, arr);
+    CDISPLAY("%16i 0b%s", val, arr);
 
     return;
 } /* adts_bit_display_32() */
@@ -72,7 +72,7 @@ adts_bit_display_64( int64_t val )
         arr[BIT_WIDTH_64 - (1 + i)] = v;
     }
 
-    CDISPLAY("%10lli 0b%s", val, arr);
+    CDISPLAY("%16lli 0b%s", val, arr);
 
     return;
 } /* adts_bit_display_64() */
