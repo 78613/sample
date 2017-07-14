@@ -24,7 +24,9 @@
  xCFLAGS  += -Q # Print compiled function and statistics
 #xCFLAGS  += -Werror 
 #xCFLAGS  += -pedantic # Warnings demanded by strict ISO C
-
+ xCFLAGS  += -Ofast # Enables all the optimizations from -O3 along with other 
+                    # aggressive optimizations that may violate strict 
+                    # compliance with language standards
 
 # Local project flag definitions
 # ======================================================
