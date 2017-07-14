@@ -5,6 +5,7 @@
 #include <inttypes.h>
 
 #include <adts_services.h>
+#include <adts_time.h>
 
 
 /******************************************************************************
@@ -88,7 +89,9 @@ adts_timestamp_approximate( void )
     struct timespec *p_ts   = &(ts);
 
     clock_gettime(CLOCK_REALTIME, p_ts);
-    tsval = p_ts->tv_sec + p_ts->tv_nsec;
+    //tsval = p_ts->tv_sec + p_ts->tv_nsec;
+    //tsval = p_ts->tv_sec;
+    tsval = p_ts->tv_nsec;
 
     return tsval;
 } /* adts_timestamp_approximate() */
@@ -104,6 +107,31 @@ adts_timestamp_approximate( void )
  *  #####  #     #   ###      #       #    #######  #####     #     #####
 ******************************************************************************/
 
+
+/**
+ **************************************************************************
+ * \brief
+ *   Compile time structure sanity
+ *
+ * \details
+ *   Sanitize the abstract data type interface.  Enforced in header file so
+ *   as to catch improper usage/include by unauthorized callers.
+ *
+ **************************************************************************
+ */
+static void
+utest_time_bytes( void )
+{
+    CDISPLAY("[%u]", sizeof(tstamp_mgr_t));
+    CDISPLAY("[%u]", sizeof(adts_time_t));
+
+    _Static_assert(sizeof(tstamp_mgr_t) <= sizeof(adts_time_t),
+        "Mismatch structs detected");
+
+    return;
+} /* utest_time_bytes() */
+
+
 /*
  ****************************************************************************
  *
@@ -113,12 +141,30 @@ adts_timestamp_approximate( void )
 static void
 utest_control( void )
 {
+    utest_time_bytes();
+
     CDISPLAY("=========================================================");
     {
         int64_t ts = 0;
 
         ts = adts_timestamp_approximate();
-        CDISPLAY("0x%016llu", ts);
+        CDISPLAY("%16llu", ts);
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        int64_t ts1 = 0;
+        int64_t ts2 = 0;
+
+        ts1 = adts_timestamp_approximate();
+        //sleep(1);
+        //nanosleep(???);
+        ts2 = adts_timestamp_approximate();
+        CDISPLAY("%16llu", ts1);
+        CDISPLAY("%16llu", ts2);
+
+        /* Time difference */
+        CDISPLAY("%16llu", (ts2 - ts1));
     }
 
     return;

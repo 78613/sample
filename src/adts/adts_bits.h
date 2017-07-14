@@ -6,7 +6,7 @@
 
 bool
 adts_bit_is_set( int32_t value,
-                  int32_t bit );
+                 int32_t bit );
 bool
 adts_bit_is_not_set( int32_t value,
                      int32_t bit );
