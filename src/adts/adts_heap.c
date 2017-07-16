@@ -520,7 +520,7 @@ adts_heap_create( adts_heap_type_t type )
     heap_node_t *p_elems     = NULL;
     adts_heap_t *p_adts_heap = NULL;
 
-    p_adts_heap = calloc(1, sizeof(*p_adts_heap));
+    p_adts_heap = adts_mem_zalloc(sizeof(*p_adts_heap));
     if (NULL == p_adts_heap) {
         rc = ENOMEM;
         goto exception;

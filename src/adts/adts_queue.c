@@ -200,7 +200,7 @@ adts_queue_enqueue( adts_queue_t *p_adts_queue,
 
     adts_sanity_entry(p_sanity);
 
-    p_node = calloc(1, sizeof(*p_node));
+    p_node = adts_mem_zalloc(sizeof(*p_node));
     if (unlikely(NULL == p_node)) {
         rc = ENOMEM;
         goto exception;
@@ -260,7 +260,7 @@ adts_queue_destroy( adts_queue_t *p_adts_queue )
 adts_queue_t *
 adts_queue_create( void )
 {
-    adts_queue_t *p_adts_queue = calloc(1, sizeof(*p_adts_queue));
+    adts_queue_t *p_adts_queue = adts_mem_zalloc(sizeof(*p_adts_queue));
 
     return p_adts_queue;
 } /* adts_queue_create() */

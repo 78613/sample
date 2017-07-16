@@ -464,7 +464,7 @@ adts_tree_create( adts_tree_type_t  type )
     tree_t      *p_tree      = NULL;
     adts_tree_t *p_adts_tree = NULL;
 
-    p_adts_tree = calloc(1, sizeof(*p_adts_tree));
+    p_adts_tree = adts_mem_zalloc(sizeof(*p_adts_tree));
     if (NULL == p_adts_tree) {
         goto exception;
     }
@@ -533,7 +533,7 @@ utest_tree_generate_node( void *p_data )
 {
     tree_node_t *p_node = NULL;
 
-    p_node = calloc(1, sizeof(*p_node));
+    p_node = adts_mem_zalloc(sizeof(*p_node));
     if (NULL == p_node) {
         goto exception;
     }

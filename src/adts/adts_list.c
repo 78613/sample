@@ -539,7 +539,7 @@ adts_list_destroy( adts_list_t *p_adts_list )
 adts_list_t *
 adts_list_create( void )
 {
-    return calloc(1, sizeof(adts_list_t));
+    return adts_mem_zalloc(sizeof(adts_list_t));
 } /* adts_list_create() */
 
 

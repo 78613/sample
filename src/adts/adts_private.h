@@ -81,7 +81,7 @@ adts_sanity_entry( adts_sanity_t *p_sanity )
     assert(0 == p_sanity->busy);
 
     p_sanity->busy++;
-    /* memory barriers are a better solution to volatile, but... still need
+    /* memory barriers are an improvement to volatile, but... still need
      * to investigate how to portably and efficiently pull this capability
      * into the adts shared library */
     //wmb();

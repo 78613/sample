@@ -126,7 +126,7 @@ adts_graph_create( size_t vertices )
     adts_graph_t      *p_adts_graph      = NULL;
     adts_graph_node_t *p_adts_graph_node = NULL;
 
-    p_adts_graph  = calloc(1, sizeof(*p_adts_graph));
+    p_adts_graph  = adts_mem_zalloc(sizeof(*p_adts_graph));
     if (NULL == p_adts_graph) {
         rc = ENOMEM;
         goto exception;
