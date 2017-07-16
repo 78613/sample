@@ -11,6 +11,7 @@
 #include <adts_tree.h>
 #include <adts_stack.h>
 #include <adts_queue.h>
+#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_services.h>
 

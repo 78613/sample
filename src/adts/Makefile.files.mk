@@ -15,6 +15,8 @@ xH_FILES  += adts_trie.h
 xH_FILES  += adts_graph.h
 xH_FILES  += adts_stack.h
 xH_FILES  += adts_queue.h
+xH_FILES  += adts_sanity.h
+xH_FILES  += adts_memory.h
 xH_FILES  += adts_hexdump.h
 xH_FILES  += adts_snapshot.h
 xH_FILES  += adts_services.h
@@ -34,6 +36,7 @@ xC_FILES  += adts_trie.c
 xC_FILES  += adts_graph.c
 xC_FILES  += adts_stack.c
 xC_FILES  += adts_queue.c
+xC_FILES  += adts_memory.c
 xC_FILES  += adts_hexdump.c
 xC_FILES  += adts_snapshot.c
 

@@ -8,6 +8,7 @@
 
 /* Toolbox */
 #include <adts_heap.h>
+#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_services.h>
 

@@ -10,6 +10,7 @@
 /* Toolbox */
 #include <adts_math.h>
 #include <adts_hash.h>
+#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_hexdump.h>
 #include <adts_services.h>

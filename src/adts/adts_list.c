@@ -9,6 +9,7 @@
 
 /* Toolbox */
 #include <adts_list.h>
+#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_services.h>
 

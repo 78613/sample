@@ -10,6 +10,7 @@
 
 /* Toolbox */
 #include <adts_graph.h>
+#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_services.h>
 
