@@ -1,7 +1,6 @@
 
 #include <time.h>  /* clock_gettime() */
 #include <errno.h>
-#include <sched.h> /* sched_getcpu() */
 #include <string.h>
 #include <inttypes.h>
 
