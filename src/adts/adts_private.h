@@ -45,7 +45,7 @@
  *    Number of pointers per system pagesize
  ****************************************************************************
  */
-static inline size_t
+inline size_t
 adts_ptrs_per_page( void )
 {
     return getpagesize() / sizeof(void *);

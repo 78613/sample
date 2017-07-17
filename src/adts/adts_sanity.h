@@ -32,7 +32,7 @@ typedef struct {
  *
  **************************************************************************
  */
-static inline void
+inline void
 adts_sanity_exit( adts_sanity_t *p_sanity )
 {
     p_sanity->busy--;
@@ -40,7 +40,7 @@ adts_sanity_exit( adts_sanity_t *p_sanity )
     return;
 } /* adts_sanity_exit() */
 
-static inline void
+inline void
 adts_sanity_entry( adts_sanity_t *p_sanity )
 {
     /* if !0 on entry, then there's clearly a serialization error on

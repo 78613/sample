@@ -40,7 +40,7 @@
  *
  **************************************************************************
  */
-static inline size_t
+inline size_t
 adts_digits_decimal( int32_t val )
 {
     size_t digits = 0;

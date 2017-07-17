@@ -19,7 +19,7 @@ xH_FILES  += adts_sanity.h
 xH_FILES  += adts_memory.h
 xH_FILES  += adts_hexdump.h
 xH_FILES  += adts_snapshot.h
-xH_FILES  += adts_services.h
+xH_FILES  += adts_display.h
 
 # ======================================================
 xC_FILES  += adts_rbt.c
