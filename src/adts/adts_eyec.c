@@ -60,10 +60,13 @@ bool
 adts_eyec_invalid( adts_eyec_t *p_adts_bmark,
                    adts_eyec_t *p_adts_emark )
 {
+    bool    rc      = false;
     eyec_t *p_bmark = (eyec_t *) p_adts_bmark;
     eyec_t *p_emark = (eyec_t *) p_adts_emark;
 
-    return (EYEC_BMARK != p_bmark->safety) || (EYEC_EMARK != p_emark->safety);
+    rc |= strncmp(EYEC_BMARK, p_bmark->safety, sizeof(p_bmark->safety));
+    rc |= strncmp(EYEC_EMARK, p_emark->safety, sizeof(p_emark->safety));
+    return rc;
 } /* adts_eyec_invalid() */
 
 
@@ -207,7 +210,7 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        CDISPLAY("Test 3: small input sanity");
+        CDISPLAY("Test 4: small input sanity");
 
         typedef struct {
             adts_eyec_t bmark;
@@ -226,7 +229,7 @@ utest_control( void )
 
     CDISPLAY("=========================================================");
     {
-        CDISPLAY("Test 3: large input sanity");
+        CDISPLAY("Test 5: large input sanity");
 
         typedef struct {
             adts_eyec_t bmark;
