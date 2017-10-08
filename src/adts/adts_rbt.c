@@ -56,6 +56,20 @@ typedef struct rbt_node_s {
  * #        #####  #     #  #####     #      ###   ####### #     #  #####
 ******************************************************************************/
 
+// rbt_delete
+// rbt_get_value
+// rbt_key_present
+// rbt_key_missing
+// rbt_nodes
+// rbt_peek_min
+// rbt_peek_max
+// rbt_delete_min
+// rbt_delete_max
+// rbt_floor
+// rbt_cieling
+// rbt_rank
+
+
 /**
  **************************************************************************
  *
@@ -396,14 +410,12 @@ rbt_insert( rbt_node_t  *p_root,
 			p_root->p_data = p_data;
 		}
 
-		if (rbt_is_red(p_root->p_right) &&
-				(false == rbt_is_red(p_root->p_left))) {
+		if (rbt_is_red(p_root->p_right) && (false == rbt_is_red(p_root->p_left))) {
 			CDISPLAY("");
 			p_root = rbt_rotate_left(p_root);
 		}
 
-		if (rbt_is_red(p_root->p_left) &&
-				(false == rbt_is_red(p_root->p_left->p_left))) {
+		if (rbt_is_red(p_root->p_left) && (false == rbt_is_red(p_root->p_left->p_left))) {
 			CDISPLAY("");
 			p_root = rbt_rotate_right(p_root);
 		}
@@ -558,18 +570,7 @@ exception:
     return p_tmp;
 } /* rbt_find_ceiling() */
 
-// rbt_delete
-// rbt_get_value
-// rbt_key_present
-// rbt_key_missing
-// rbt_nodes
-// rbt_peek_min
-// rbt_peek_max
-// rbt_delete_min
-// rbt_delete_max
-// rbt_floor
-// rbt_cieling
-// rbt_rank
+
 
 
 

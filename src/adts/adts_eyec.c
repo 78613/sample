@@ -90,6 +90,9 @@ adts_eyec_create( adts_eyec_t *p_adts_bmark,
                   adts_eyec_t *p_adts_emark,
                   char        *p_str )
 {
+    /* Sanity */
+    assert(p_str);
+
     eyec_t   *p_bmark = (eyec_t *) p_adts_bmark;
     eyec_t   *p_emark = (eyec_t *) p_adts_emark;
     int32_t   rc      = 0;
@@ -97,8 +100,6 @@ adts_eyec_create( adts_eyec_t *p_adts_bmark,
     size_t    sbytes  = strnlen(p_str, dbytes);
     size_t    bytes   = MIN(dbytes, sbytes);
 
-    /* Sanity */
-    assert(p_str);
     memset(p_adts_bmark, 0, sizeof(*p_adts_bmark));
     memset(p_adts_emark, 0, sizeof(*p_adts_emark));
 
