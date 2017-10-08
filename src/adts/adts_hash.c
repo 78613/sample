@@ -523,6 +523,7 @@ hash_collision_remove( hash_t       *p_hash,
     }
 
     /* Logic error if no removal candidates present */
+    assert(p_node);
     assert(remove_ok);
 
     if (NULL == p_node->p_prev) {

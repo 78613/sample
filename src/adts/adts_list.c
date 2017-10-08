@@ -428,7 +428,7 @@ adts_list_reverse( adts_list_t *p_adts_list )
         p_node->p_next = tmp;
         p_node         = p_node->p_prev;
     }
-    p_list->p_head = tmp->p_prev;
+    p_list->p_head = (tmp) ? tmp->p_prev : NULL;
     p_list->p_tail = pre;
 
     adts_sanity_exit(p_sanity);

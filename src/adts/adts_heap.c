@@ -528,7 +528,7 @@ adts_heap_create( adts_heap_type_t type )
     }
 
     /* Array of pointers to heap_adts_node_t */
-    p_elems = calloc(elems, sizeof(p_elems));
+    p_elems = calloc(elems, sizeof(*p_elems));
     if (NULL == p_elems) {
         rc = ENOMEM;
         goto exception;

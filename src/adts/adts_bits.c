@@ -148,7 +148,7 @@ int32_t
 adts_bit_clear_lsb_to_kth( int32_t value,
                            int32_t bit )
 {
-    int32_t mask = -1 << bit;
+    uint32_t mask = ((uint32_t) -1) << bit;
 
     return value & mask;
 } /* adts_bit_clear_lsb_to_kth() */

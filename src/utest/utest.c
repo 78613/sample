@@ -13,8 +13,9 @@
 static void
 utest_adts( void )
 {
-    utest_adts_rbt();
+    //utest_adts_rbt();
     utest_adts_eyec();
+    /*
     utest_adts_bits();
     utest_adts_time();
     utest_adts_list();
@@ -29,6 +30,7 @@ utest_adts( void )
     utest_adts_graph();
     utest_adts_hexdump();
     utest_adts_snapshot();
+    */
 
     return;
 } /* utest_adts() */

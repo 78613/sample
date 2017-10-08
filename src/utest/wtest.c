@@ -32,9 +32,9 @@ test_array_size( void )
 
 
 static bool
-test_bounds_valid( VOID *SrcStart,
+test_bounds_valid( char *SrcStart,
                    ULONG SrcLen,
-                   VOID *DestStart,
+                   char *DestStart,
                    ULONG DestLen )
 {
 
@@ -75,9 +75,9 @@ Cleanup:
 
 // returns true of the source falls outside of the destination
 static BOOLEAN
-test_bounds_invalid( VOID *SrcStart,
+test_bounds_invalid( char *SrcStart,
                      ULONG SrcLen,
-                     VOID *DestStart,
+                     char *DestStart,
                      ULONG DestLen )
 {
     ULONG   srcEnd  = SrcStart + SrcLen;
