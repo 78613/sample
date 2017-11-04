@@ -14,7 +14,7 @@
 
 
 
-void
+static void
 test_array_size( void )
 {
     #define ARR_ENTRIES (128)
@@ -90,7 +90,7 @@ test_bounds_invalid( char *SrcStart,
 
 
 // works for static and dynamically allocated arrays
-void
+static void
 test_print_array( uint64_t       *arr,
                   const int32_t   rows,
                   const int32_t   cols )
@@ -104,6 +104,29 @@ test_print_array( uint64_t       *arr,
 
     return;
 } /* test_print_array() */
+
+
+// Simple incrementer tests
+static void
+test_incrementer( void )
+{
+    CDISPLAY("i++");
+    for (int32_t i = 0; i < 10; i++) {
+        CDISPLAY("i = %u", i);
+    }
+
+    CDISPLAY("++i");
+    for (int32_t i = 0; i < 10; ++i) {
+        CDISPLAY("i = %u", i);
+    }
+
+    CDISPLAY("i+=1");
+    for (int32_t i = 0; i < 10; i+=1) {
+        CDISPLAY("i = %u", i);
+    }
+
+    return;
+} /* test_incrementer() */
 
 
 // Only works for static arrays
@@ -160,8 +183,11 @@ utest_control( void )
             rc = test_bounds_invalid(srcStart, srcLen, destStart, destLen);
             CDISPLAY("%d", rc);
         }
+    }
 
-
+    CDISPLAY("=========================================================");
+    {
+        test_incrementer();
     }
 
     return;
