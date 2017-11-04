@@ -125,6 +125,29 @@ test_incrementer( void )
         CDISPLAY("i = %u", i);
     }
 
+    {
+        int32_t i = 0;
+        int32_t x = 0;
+        x = i++;
+        CDISPLAY("%u = i++;", x);
+    }
+
+    {
+        int32_t i = 0;
+        int32_t x = 0;
+        x = ++i;
+        CDISPLAY("%u = ++i;", x);
+    }
+
+    {
+        int32_t i = 0;
+        int32_t x = 0;
+        i += 1;
+        x = i;
+        CDISPLAY("%u = +=i;", x);
+    }
+
+
     return;
 } /* test_incrementer() */
 
