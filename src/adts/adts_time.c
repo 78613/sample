@@ -78,6 +78,23 @@ typedef struct {
 //ts_display()
 
 
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+static inline uint64_t
+adts_cycles( void )
+{
+    uint64_t cycles;
+
+    __asm__ volatile (".byte 0x0f, 0x31" : "=A" (cycles));
+
+    return cycles;
+} /* adts_cycles() */
+
+
 
 /*
  ****************************************************************************
@@ -231,7 +248,7 @@ utest_control( void )
         int64_t ts2 = 0;
 
         ts1 = adts_tstamp();
-        //sleep(1);
+        sleep(1);
         //nanosleep(???);
         ts2 = adts_tstamp();
         CDISPLAY("%16llu", ts1);
@@ -240,6 +257,34 @@ utest_control( void )
         /* Time difference */
         CDISPLAY("%16llu", (ts2 - ts1));
     }
+
+    CDISPLAY("=========================================================");
+    {
+        uint64_t cs = 0;
+        uint64_t ce = 0;
+
+        cs = adts_cycles();
+        ce = adts_cycles();
+
+        CDISPLAY("%llu", cs);
+        CDISPLAY("%llu", ce);
+        CDISPLAY("%llu", (ce - cs));
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        // out of time, iterate to normalize this for more acurate sampling
+        uint64_t cs = 0;
+        uint64_t ce = 0;
+
+        cs = adts_cycles();
+        ce = adts_cycles();
+
+        CDISPLAY("%llu", cs);
+        CDISPLAY("%llu", ce);
+        CDISPLAY("%llu", (ce - cs));
+    }
+
 
     return;
 } /* utest_control() */
