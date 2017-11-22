@@ -19,21 +19,22 @@
  **************************************************************************
  */
 #if defined(__ADTS_DISPLAY)
-    #define CDISPLAY(_format, ...)                            \
-    do {                                                      \
-        char   _buffer[256] = {0};                            \
-        size_t _limit       = sizeof(_buffer) - 1;            \
-                                                              \
-        snprintf(_buffer, _limit, _format, ## __VA_ARGS__);   \
-        printf("%3u 0x%-8.8x 0x%-8.8x %5u %-25.25s %-30.30s %s\n",     \
-               sched_getcpu(),                                \
-               getpid(),                                      \
-               pthread_self(),                                \
-               __LINE__, __FILE__, __FUNCTION__,              \
-               _buffer);                                      \
-                                                              \
-        /* Serialize console output on exit/error */          \
-        fflush(stdout);                                       \
+    #define CDISPLAY(_format, ...)                                        \
+    do {                                                                  \
+        char   _buffer[256] = {0};                                        \
+        size_t _limit       = sizeof(_buffer) - 1;                        \
+                                                                          \
+        snprintf(_buffer, _limit, _format, ## __VA_ARGS__);               \
+        printf("%3u 0x%-8.8x 0x%-8.8x %s %5u %-25.25s %-30.30s %s\n",     \
+               sched_getcpu(),                                            \
+               getpid(),                                                  \
+               pthread_self(),                                            \
+               "|",                                                       \
+               __LINE__, __FILE__, __FUNCTION__,                          \
+               _buffer);                                                  \
+                                                                          \
+        /* Serialize console output on exit/error */                      \
+        fflush(stdout);                                                   \
     } while(0);
 #else
     #define CDISPLAY(_format, ...) /* compile disabled */
