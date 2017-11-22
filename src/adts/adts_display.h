@@ -2,6 +2,7 @@
 
 #include <sched.h>     /* sched_getcpu() */
 #include <stdio.h>     /* printf() */
+#include <pthread.h>   /* pthread_self() */
 #include <sys/types.h> /* getpid() */
 
 
@@ -24,9 +25,10 @@
         size_t _limit       = sizeof(_buffer) - 1;            \
                                                               \
         snprintf(_buffer, _limit, _format, ## __VA_ARGS__);   \
-        printf("%3u 0x%-8.8x %4u %-25.25s %-30.30s %s\n",     \
+        printf("%3u 0x%-8.8x 0x%-8.8x %5u %-25.25s %-30.30s %s\n",     \
                sched_getcpu(),                                \
                getpid(),                                      \
+               pthread_self(),                                \
                __LINE__, __FILE__, __FUNCTION__,              \
                _buffer);                                      \
                                                               \
