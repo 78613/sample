@@ -23,6 +23,7 @@ xH_FILES  += adts_snapshot.h
 
 # ======================================================
 xC_FILES  += adts_rbt.c
+xC_FILES  += adts_test.c
 xC_FILES  += adts_eyec.c
 xC_FILES  += adts_bits.c
 xC_FILES  += adts_hash.c
