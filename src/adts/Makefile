@@ -42,8 +42,8 @@ all: clean \
 
 clean: 
 	@echo "" 
-	@echo "Prepare:" 
-	@echo "========"
+	@echo "Clean:" 
+	@echo "======"
 	rm -fr bin
 
 build:

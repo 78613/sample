@@ -49,9 +49,9 @@ all: clean  \
 
 clean:
 	@echo ""
-	@echo "Prepare:"
-	@echo "========"
-	rm -fr bin *.bc 
+	@echo "Clean:"
+	@echo "======"
+	rm -fr bin  
 
 compile:
 	@echo ""
