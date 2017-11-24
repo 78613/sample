@@ -2,10 +2,21 @@
 
 #include <sched.h>        /* sched_getcpu() */
 #include <stdio.h>        /* printf() */
+#include <unistd.h>       /* getpid() */
 #include <pthread.h>      /* pthread_self() */
 #include <sys/types.h>    /* getpid() */
 #include <sys/resource.h> /* getpriority() */
 
+
+/**
+ **************************************************************************
+ * \details
+ * the sched_getcpu() API is missing a prototype by design and causes
+ * compiler warnings.  Add the prototype here to address compiler message.
+ *
+ **************************************************************************
+ */
+int32_t sched_getcpu(void);
 
 
 /**
@@ -28,14 +39,15 @@
         int32_t            _core        = sched_getcpu();                      \
         int32_t            _policy      = 0;                                   \
         int32_t            _threadpri   = 0;                                   \
-        int32_t            _processpri  = getpriority(PRIO_PROCESS, _process); \
+        int32_t            _processpri  = 0;                                   \
         pthread_t          _thread      = pthread_self();                      \
         struct sched_param _params      = {0};                                 \
                                                                                \
-        _threadpri = pthread_getschedparam(_thread, &(_policy), &(_params));   \
+        _processpri = getpriority(PRIO_PROCESS, (id_t) _process);              \
+        _threadpri  = pthread_getschedparam(_thread, &(_policy), &(_params));  \
                                                                                \
         snprintf(_buffer, _limit, _format, ## __VA_ARGS__);                    \
-        printf("%3u 0x%-8.8x %2i 0x%-8.8x %2i %s %5u %-25.25s %-30.30s %s\n",  \
+        printf("%3u 0x%-8.8x %2i 0x%-8.8lx %2i %s %5u %-25.25s %-30.30s %s\n", \
                _core,                                                          \
                _process,                                                       \
                _processpri,                                                    \
