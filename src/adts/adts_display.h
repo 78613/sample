@@ -64,24 +64,3 @@ int32_t sched_getcpu(void);
     #define CDISPLAY(_format, ...) /* compile disabled */
 #endif
 
-
-/**
- **************************************************************************
- * \details
- *   Count digits in decimal number
- *
- **************************************************************************
- */
-inline size_t
-adts_digits_decimal( int32_t val )
-{
-    size_t digits = 0;
-
-    while (val) {
-        val /= 10;
-        digits++;
-    }
-
-    return digits;
-} /* adts_digits_decimal() */
-

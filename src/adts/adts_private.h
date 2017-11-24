@@ -51,3 +51,24 @@ adts_ptrs_per_page( void )
     return getpagesize() / sizeof(void *);
 } /* adts_ptrs_per_page() */
 
+
+/**
+ **************************************************************************
+ * \details
+ *   Count digits in decimal number
+ *
+ **************************************************************************
+ */
+inline size_t
+adts_digits_decimal( int32_t val )
+{
+    size_t digits = 0;
+
+    while (val) {
+        val /= 10;
+        digits++;
+    }
+
+    return digits;
+} /* adts_digits_decimal() */
+
