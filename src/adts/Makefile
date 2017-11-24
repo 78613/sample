@@ -41,10 +41,12 @@ all: clean \
      cleanup
 
 clean: 
-	@echo "" 
-	@echo "Clean:" 
+	@echo ""
+	@echo "Clean:"
 	@echo "======"
-	rm -fr bin
+	rm -fr *.[i,s,o]
+	rm -fr *.bc
+	rm -fr bin/
 
 build:
 	@echo ""
