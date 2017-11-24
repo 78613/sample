@@ -36,21 +36,23 @@ OBJECTS += $(patsubst %.c,%.o,$(C_FILES))
 
 # "all" should always be the first defined target to ensure default build
 # ======================================================
-all: prepare \
+all: clean \
      build   \
      cleanup
 
-prepare: 
+clean: 
 	@echo "" 
 	@echo "Prepare:" 
 	@echo "========"
 	rm -fr bin
+
 build:
 	@echo ""
 	@echo "Compile Shared Library:"
 	@echo "======================="
 	$(CC) -I ${PWD} $(CFLAGS) $(C_FILES) 
 	$(CC) -I ${PWD} -shared -o libadts.so $(OBJECTS) -lrt
+
 cleanup:
 	@echo ""
 	@echo "Cleanup:"

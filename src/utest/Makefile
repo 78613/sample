@@ -42,28 +42,31 @@ OBJECTS += $(patsubst %.c,%.o,$(C_FILES))
 
 # "all" should always be the first defined target to ensure default build
 # ======================================================
-all: prepare  \
+all: clean  \
      compile  \
      cleanup  \
      unittest
 
-prepare:
+clean:
 	@echo ""
 	@echo "Prepare:"
 	@echo "========"
 	rm -fr bin *.bc 
+
 compile:
 	@echo ""
 	@echo "Compile:"
 	@echo "========"
 	mkdir -p bin
 	$(CC) $(HPATHS) $(CFLAGS) -o bin/utest.exe $(C_FILES) $(LPATHS) $(LNAMES)
+
 cleanup:
 	@echo ""
 	@echo "Cleanup:"
 	@echo "========"
 	mv *.[i,s,o] bin/
 	mv *.bc bin/
+
 unittest:
 	@echo ""
 	@echo "Unit Test:"
