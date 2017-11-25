@@ -189,6 +189,196 @@ adts_cycles_baseline( void )
  */
 #include <math.h>
 #include <assert.h>
+#include <adts_sort.h>
+#include <adts_hexdump.h>
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   macro based swap logic.
+ *    - leverages input type for tmp and max reuse
+ *    - macro based for pseudo inline capability
+ ****************************************************************************
+ */
+#define SWAP( _pa, _pb, _type ) { \
+    _type _tmp = *_pa;            \
+                                  \
+    *_pa = *_pb;                  \
+    *_pb = _tmp;                  \
+}
+
+
+/*
+ ****************************************************************************
+ * \details
+ *   uniformly random permutation of the input array, provided no
+ *   duplicate values
+ *
+ *   FIXME:
+ *     Using % i results in pseudo - random.  There is no inherit capability
+ *     in C standard lib to get a random number from 0 -> M.  Thus more
+ *     research is neede here
+ *
+ * Time:  O(n) // linear time shuffle
+ * Space: O(1) // no space scaling
+ ****************************************************************************
+ */
+void
+adts_shuffle64( uint64_t arr[],
+                size_t   elems )
+{
+    for (int32_t i = 0; i < elems; i++) {
+        //FIXME: Using % i results in pseudo - random.  Research this further
+        int32_t r = rand() % (i + 1);
+        SWAP(&arr[i], &arr[r], uint64_t);
+    }
+
+    return;
+} /* adts_shuffle64() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_arr_is_not_sorted64( int32_t arr[],
+                          size_t  elems )
+{
+    bool rc = 0;
+
+    if (unlikely(1 >= elems)) {
+        /* sorted by definition */
+        goto exception;
+    }
+
+    for (int32_t idx = 1; idx < elems; idx++) {
+        if (arr[idx - 1] > arr[idx]) {
+            rc = true;
+            break;
+        }
+    }
+
+exception:
+    return rc;
+} /* adts_arr_is_not_sorted64() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+bool
+adts_arr_is_sorted64( uint64_t arr[],
+                      size_t   elems )
+{
+    return !(adts_arr_is_not_sorted64(arr, elems));
+} /* adts_arr_is_sorted64() */
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static int32_t
+sort_quick_partition64( uint64_t arr[],
+                        size_t  lo,
+                        size_t  hi )
+{
+    int32_t i = lo;
+    int32_t j = hi + 1;
+
+    for (;;) {
+        /* find item on left to swap */
+        while (arr[++i] < arr[lo]) {
+            if (i == hi) {
+                break;
+            }
+        }
+
+        /* find item on right to swap */
+        while (arr[lo] < arr[--j]) {
+            if (j == lo) {
+                break;
+            }
+        }
+
+        /* check if pointes crossed */
+        if (i >= j) {
+            break;
+        }
+
+        SWAP(&arr[i], &arr[j], uint64_t);
+    }
+
+    /* swap with partition item */
+    SWAP(&arr[lo], &arr[j], uint64_t);
+
+    /* Index of item now in place */
+    return j;
+} /* sort_quick_partition64() */
+
+
+
+/*
+ ****************************************************************************
+ *
+ ****************************************************************************
+ */
+static void
+sort_quick64( uint64_t arr[],
+              size_t   lo,
+              size_t   hi )
+{
+    if (hi <= lo) {
+        /* done */
+        goto exception;
+    }
+
+    #if 0
+    /* small arrays are more efficiently processed with elementary sorts */
+    if (hi <= (lo + SORT_THREASHOLD - 1)) {
+        adts_sort_insertion_ext(arr, lo, hi);
+        goto exception;
+    }
+    #endif
+
+    int32_t j = sort_quick_partition64(arr, lo, hi);
+
+    sort_quick64(arr, lo, (j - 1));
+    sort_quick64(arr, (j + 1), hi);
+
+exception:
+    return;
+} /* sort_quick64() */
+
+
+/*
+ ****************************************************************************
+ *
+ *  Time:  O(?)
+ *  Space: O(1)
+ ****************************************************************************
+ */
+void
+adts_sort_quick64( uint64_t arr[],
+                   size_t   elems )
+{
+    /* shuffle to probabilistically eliminate the N^2 worst case scenario */
+    adts_shuffle64(arr, elems);
+
+    /* start the sort recursion */
+    sort_quick64(arr, 0, elems - 1);
+
+    return;
+} /* adts_sort_quick64() */
+
+
 
 static void
 utest_control( void )
@@ -197,52 +387,37 @@ utest_control( void )
     {
         CDISPLAY("Baseline:");
 
-        const size_t  elems  = 1024 * 1024;
-        uint64_t      cycles = 0;
-        float         mean   = 0;
-        uint64_t      min    = ~(0);
-        uint64_t      max    = 0;
-        uint64_t      sum    = 0;
-        uint64_t      start  = 0;
-        uint64_t      stop   = 0;
-
-        for (int32_t cnt = 0; cnt < elems; cnt++) {
-            start      = adts_cycles_start();
-            stop       = adts_cycles_stop();
-            cycles     = stop - start;
-            max        = MAX(max, cycles);
-            min        = MIN(min, cycles);
-            sum       += cycles;
-        }
-        mean = (float) sum / elems;
-
-        CDISPLAY("iter: %16llu",  elems);
-        CDISPLAY("min:  %16llu",  min);
-        CDISPLAY("max:  %16llu",  max);
-        CDISPLAY("mean: %16f",   mean);
-    }
-
-    CDISPLAY("====================================================");
-    {
-        CDISPLAY("Baseline:");
-
-        const size_t  elems  = 1024 * 1024;
-        const size_t  bytes  = sizeof(uint64_t) * elems;
-        uint64_t      cycles = 0;
+        size_t        elems  = 1024 * 1024;
+        size_t        bytes  = sizeof(uint64_t) * elems;
         float         mean   = 0.0;
         float         sum    = 0.0;
+        float         var    = 0.0;
         float         stdev  = 0.0;
-        float         stvar  = 0.0;
+        int32_t       rc     = 0;
         uint64_t      min    = ~(0);
         uint64_t      max    = 0;
-        uint64_t      start  = 0;
         uint64_t      stop   = 0;
+        uint64_t      start  = 0;
+        uint64_t      range  = 0;
         uint64_t     *p_arr  = NULL;
+        uint64_t      cycles = 0;
+        uint64_t      p25    = 0;
+        uint64_t      p50    = 0;
+        uint64_t      p75    = 0;
+        uint64_t      p99    = 0;
+        uint64_t      p39s   = 0;
+        uint64_t      p49s   = 0;
+        uint64_t      p59s   = 0;
+        uint64_t      p69s   = 0;
+        uint64_t      p79s   = 0;
+        uint64_t      p89s   = 0;
+        uint64_t      p99s   = 0;
 
         p_arr = malloc(bytes);
         assert(p_arr);
         memset(p_arr, 0, bytes);
 
+        /* Basic measures */
         for (int32_t cnt = 0; cnt < elems; cnt++) {
             start      = adts_cycles_start();
             stop       = adts_cycles_stop();
@@ -253,96 +428,53 @@ utest_control( void )
             p_arr[cnt] = cycles;
         }
 
-        mean = sum / elems;
+        /* Advanced measures */
+        range = max - min;
+        mean  = sum / elems;
         for (int32_t cnt = 0; cnt < elems; cnt++) {
             stdev += pow((p_arr[cnt] - mean), 2);
         }
-        stvar = stdev / elems;
-        stdev = sqrt(stvar);
+        var   = stdev / elems;
+        stdev = sqrt(var);
 
-        CDISPLAY("iter:  %16llu",  elems);
-        CDISPLAY("min:   %16llu",  min);
-        CDISPLAY("max:   %16llu",  max);
-        CDISPLAY("mean:  %16f",    mean);
-        CDISPLAY("stvar: %16f",    stvar);
-        CDISPLAY("stdev: %16f",    stdev);
+        /* Percentiles */
+        adts_sort_quick64(p_arr, elems);
+        rc = adts_arr_is_sorted64(p_arr, elems);
+        assert(false == rc);
+
+        p25  = (25 * (elems + 1)) / 100;
+        p50  = (50 * (elems + 1)) / 100;
+        p75  = (75 * (elems + 1)) / 100;
+        p99  = (99 * (elems + 1)) / 100;
+        p39s = (99.9 * (elems + 1)) / 100;
+        p49s = (99.99 * (elems + 1)) / 100;
+        p59s = (99.999 * (elems + 1)) / 100;
+        p69s = (99.9999 * (elems + 1)) / 100;
+        p79s = (99.99999 * (elems + 1)) / 100;
+        p89s = (99.999999 * (elems + 1)) / 100;
+        p99s = (99.9999999 * (elems + 1)) / 100;
+
+        CDISPLAY("measures:    %16llu",  elems);
+        CDISPLAY("min:         %16llu",  min);
+        CDISPLAY("max:         %16llu",  max);
+        CDISPLAY("range:       %16llu",  range);
+        CDISPLAY("mean:        %16f",    mean);
+        CDISPLAY("variance:    %16f",    var);
+        CDISPLAY("std.dev:     %16f",    stdev);
+        CDISPLAY("p25:         %16llu",  p_arr[p25]);
+        CDISPLAY("p50:         %16llu",  p_arr[p50]);
+        CDISPLAY("p75:         %16llu",  p_arr[p75]);
+        CDISPLAY("p99:         %16llu",  p_arr[p99]);
+        CDISPLAY("p99.9:       %16llu",  p_arr[p39s]);
+        CDISPLAY("p99.99:      %16llu",  p_arr[p49s]);
+        CDISPLAY("p99.999:     %16llu",  p_arr[p59s]);
+        CDISPLAY("p99.9999:    %16llu",  p_arr[p69s]);
+        CDISPLAY("p99.99999:   %16llu",  p_arr[p79s]);
+        CDISPLAY("p99.999999:  %16llu",  p_arr[p89s]);
+        CDISPLAY("p99.9999999: %16llu",  p_arr[p99s]);
 
         free(p_arr);
     }
-
-#if 0
-    CDISPLAY("====================================================");
-    {
-        CDISPLAY("Test1:");
-        #define  UT_ITER   (1000)
-
-        uint64_t min    = ~(0);
-        uint64_t max    = 0;
-        uint64_t cycles = 0;
-
-        for (int32_t cnt = 0; cnt < UT_ITER; cnt++) {
-            cycles = adts_cycles_baseline();
-            max = MAX(max, cycles);
-            min = MIN(min, cycles);
-        }
-
-        CDISPLAY("iterations: %llu", UT_ITER);
-        CDISPLAY("min: %10llu", min);
-        CDISPLAY("max: %10llu", max);
-    }
-
-    CDISPLAY("Test2: ===================================================");
-    {
-        // out of time, iterate to normalize this for more acurate sampling
-        uint64_t cs = 0;
-        uint64_t ce = 0;
-
-        cs = adts_cycles_start();
-        ce = adts_cycles_stop();
-
-        CDISPLAY("%llu", cs);
-        CDISPLAY("%llu", ce);
-        CDISPLAY("%llu", (ce - cs));
-    }
-
-    CDISPLAY("Test 3: ====================================================");
-    {
-        #define  UT_ITER   (1000)
-
-        uint64_t cs     = 0;
-        uint64_t ce     = 0;
-        uint64_t min    = ~(0);
-        uint64_t max    = 0;
-        uint64_t cycles = 0;
-
-        for (int32_t cnt = 0; cnt < UT_ITER; cnt++) {
-            cs     = adts_cycles_start();
-            {
-                /* Measure code here */
-                //char *x = adts_mem_zalloc(1024);
-                char *x = malloc(1024);
-                free(x);
-            }
-            ce     = adts_cycles_stop();
-            cycles = (ce - cs);
-
-            max = MAX(max, cycles);
-            min = MIN(min, cycles);
-        }
-
-        CDISPLAY("iterations: %llu", UT_ITER);
-        CDISPLAY("min: %10llu", min);
-        CDISPLAY("max: %10llu", max);
-    }
-
-    CDISPLAY("Test 4: ====================================================");
-    {
-        uint64_t cyc = 0;
-
-        cyc = adts_cycles_baseline();
-        CDISPLAY("%llu", cyc);
-    }
-#endif
 
     return;
 } /* utest_control() */
