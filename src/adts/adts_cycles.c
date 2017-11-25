@@ -99,10 +99,34 @@ adts_cycles_start( void )
  ****************************************************************************
  */
 static inline uint64_t
-adts_cycles_base( void )
+adts_cycles_baseline( void )
 {
-    uint64_t start, end;
-    unsigned cycles_low, cycles_high, cycles_low1, cycles_high1;
+    uint64_t start = 0;
+    uint64_t stop  = 0;
+
+    start = adts_cycles_start();
+    stop  = adts_cycles_stop();
+
+    return (stop - start);
+} /* adts_cycles_baseline() */
+
+
+#if 0
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+static inline uint64_t
+adts_cycles_baseline( void )
+{
+    uint64_t begin;
+    uint64_t end;
+    unsigned cycles_low,
+             cycles_high,
+             cycles_low1,
+             cycles_high1;
 
     asm volatile ("CPUID\n\t"
             "RDTSC\n\t"
@@ -111,7 +135,7 @@ adts_cycles_base( void )
                 :: "%rax", "%rbx", "%rcx", "%rdx");
 
     /***********************************/
-    /* Test Start                      */
+    /* Test begin                      */
     /***********************************/
 
 
@@ -125,25 +149,25 @@ adts_cycles_base( void )
             "CPUID\n\t": "=r" (cycles_high1), "=r" (cycles_low1)
                 :: "%rax", "%rbx", "%rcx", "%rdx");
 
-    start = (((uint64_t) cycles_high  << 32) | cycles_low);
+    begin = (((uint64_t) cycles_high  << 32) | cycles_low);
     end   = (((uint64_t) cycles_high1 << 32) | cycles_low1);
 
-    //CDISPLAY("%llu", end - start);
+    //CDISPLAY("%llu", end - begin);
 
     #if 0
-    if ( (end - start) < 0) {
+    if ( (end - begin) < 0) {
         /* OVERVFLOW!!!*/
         times[j][i] = 0;
     }
     else
     {
-        times[j][i] = end - start;
+        times[j][i] = end - begin;
     }
     #endif
 
-    return (end - start);
-} /* adts_cycles_base() */
-
+    return (end - begin);
+} /* adts_cycles_baseline() */
+#endif
 
 
 /******************************************************************************
@@ -163,12 +187,93 @@ adts_cycles_base( void )
  *
  ****************************************************************************
  */
+#include <math.h>
+#include <assert.h>
+
 static void
 utest_control( void )
 {
-
-    CDISPLAY("=========================================================");
+    CDISPLAY("====================================================");
     {
+        CDISPLAY("Baseline:");
+
+        const size_t  elems  = 1024 * 1024;
+        uint64_t      cycles = 0;
+        float         mean   = 0;
+        uint64_t      min    = ~(0);
+        uint64_t      max    = 0;
+        uint64_t      sum    = 0;
+        uint64_t      start  = 0;
+        uint64_t      stop   = 0;
+
+        for (int32_t cnt = 0; cnt < elems; cnt++) {
+            start      = adts_cycles_start();
+            stop       = adts_cycles_stop();
+            cycles     = stop - start;
+            max        = MAX(max, cycles);
+            min        = MIN(min, cycles);
+            sum       += cycles;
+        }
+        mean = (float) sum / elems;
+
+        CDISPLAY("iter: %16llu",  elems);
+        CDISPLAY("min:  %16llu",  min);
+        CDISPLAY("max:  %16llu",  max);
+        CDISPLAY("mean: %16f",   mean);
+    }
+
+    CDISPLAY("====================================================");
+    {
+        CDISPLAY("Baseline:");
+
+        const size_t  elems  = 1024 * 1024;
+        const size_t  bytes  = sizeof(uint64_t) * elems;
+        uint64_t      cycles = 0;
+        float         mean   = 0.0;
+        float         sum    = 0.0;
+        float         stdev  = 0.0;
+        float         stvar  = 0.0;
+        uint64_t      min    = ~(0);
+        uint64_t      max    = 0;
+        uint64_t      start  = 0;
+        uint64_t      stop   = 0;
+        uint64_t     *p_arr  = NULL;
+
+        p_arr = malloc(bytes);
+        assert(p_arr);
+        memset(p_arr, 0, bytes);
+
+        for (int32_t cnt = 0; cnt < elems; cnt++) {
+            start      = adts_cycles_start();
+            stop       = adts_cycles_stop();
+            cycles     = stop - start;
+            max        = MAX(max, cycles);
+            min        = MIN(min, cycles);
+            sum       += cycles;
+            p_arr[cnt] = cycles;
+        }
+
+        mean = sum / elems;
+        for (int32_t cnt = 0; cnt < elems; cnt++) {
+            stdev += pow((p_arr[cnt] - mean), 2);
+        }
+        stvar = stdev / elems;
+        stdev = sqrt(stvar);
+
+        CDISPLAY("iter:  %16llu",  elems);
+        CDISPLAY("min:   %16llu",  min);
+        CDISPLAY("max:   %16llu",  max);
+        CDISPLAY("mean:  %16f",    mean);
+        CDISPLAY("stvar: %16f",    stvar);
+        CDISPLAY("stdev: %16f",    stdev);
+
+        free(p_arr);
+    }
+
+#if 0
+    CDISPLAY("====================================================");
+    {
+        CDISPLAY("Test1:");
         #define  UT_ITER   (1000)
 
         uint64_t min    = ~(0);
@@ -176,7 +281,7 @@ utest_control( void )
         uint64_t cycles = 0;
 
         for (int32_t cnt = 0; cnt < UT_ITER; cnt++) {
-            cycles = adts_cycles_base();
+            cycles = adts_cycles_baseline();
             max = MAX(max, cycles);
             min = MIN(min, cycles);
         }
@@ -186,7 +291,7 @@ utest_control( void )
         CDISPLAY("max: %10llu", max);
     }
 
-    CDISPLAY("=========================================================");
+    CDISPLAY("Test2: ===================================================");
     {
         // out of time, iterate to normalize this for more acurate sampling
         uint64_t cs = 0;
@@ -200,7 +305,7 @@ utest_control( void )
         CDISPLAY("%llu", (ce - cs));
     }
 
-    CDISPLAY("=========================================================");
+    CDISPLAY("Test 3: ====================================================");
     {
         #define  UT_ITER   (1000)
 
@@ -230,6 +335,14 @@ utest_control( void )
         CDISPLAY("max: %10llu", max);
     }
 
+    CDISPLAY("Test 4: ====================================================");
+    {
+        uint64_t cyc = 0;
+
+        cyc = adts_cycles_baseline();
+        CDISPLAY("%llu", cyc);
+    }
+#endif
 
     return;
 } /* utest_control() */
