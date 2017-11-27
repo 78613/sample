@@ -433,13 +433,27 @@ typedef struct {
     uint64_t      p75;
     uint64_t      p99;
 
-    uint64_t      p39s;
+    uint64_t      p25i; /* indexes */
+    uint64_t      p50i;
+    uint64_t      p75i;
+    uint64_t      p99i;
+
+    uint64_t      p39s; /* percentiles */
     uint64_t      p49s;
     uint64_t      p59s;
     uint64_t      p69s;
     uint64_t      p79s;
     uint64_t      p89s;
     uint64_t      p99s;
+
+    uint64_t      p39si; /* Indexes */
+    uint64_t      p49si;
+    uint64_t      p59si;
+    uint64_t      p69si;
+    uint64_t      p79si;
+    uint64_t      p89si;
+    uint64_t      p99si;
+
 } adts_measures_t;
 
 static void
@@ -492,19 +506,19 @@ adts_measures_display( adts_measures_t *p_m )
     CDISPLAY(" x3 99.7%%    %16f (%llu-%llu)", p_m->x3, min, max);
 
     /* Quartiles */
-    CDISPLAY("p25:         %16llu",  p_m->p25);
-    CDISPLAY("p50:         %16llu",  p_m->p50);
-    CDISPLAY("p75:         %16llu",  p_m->p75);
-    CDISPLAY("p99:         %16llu",  p_m->p99);
+    CDISPLAY("p25:         %16llu [%llu]",  p_m->p25, p_m->p25i);
+    CDISPLAY("p50:         %16llu [%llu]",  p_m->p50, p_m->p50i);
+    CDISPLAY("p75:         %16llu [%llu]",  p_m->p75, p_m->p75i);
+    CDISPLAY("p99:         %16llu [%llu]",  p_m->p99, p_m->p99i);
 
     /* Percentiles */
-    CDISPLAY("p99.9:       %16llu",  p_m->p39s);
-    CDISPLAY("p99.99:      %16llu",  p_m->p49s);
-    CDISPLAY("p99.999:     %16llu",  p_m->p59s);
-    CDISPLAY("p99.9999:    %16llu",  p_m->p69s);
-    CDISPLAY("p99.99999:   %16llu",  p_m->p79s);
-    CDISPLAY("p99.999999:  %16llu",  p_m->p89s);
-    CDISPLAY("p99.9999999: %16llu",  p_m->p99s);
+    CDISPLAY("p99.9:       %16llu [%llu]",  p_m->p39s, p_m->p39si);
+    CDISPLAY("p99.99:      %16llu [%llu]",  p_m->p49s, p_m->p49si);
+    CDISPLAY("p99.999:     %16llu [%llu]",  p_m->p59s, p_m->p59si);
+    CDISPLAY("p99.9999:    %16llu [%llu]",  p_m->p69s, p_m->p69si);
+    CDISPLAY("p99.99999:   %16llu [%llu]",  p_m->p79s, p_m->p79si);
+    CDISPLAY("p99.999999:  %16llu [%llu]",  p_m->p89s, p_m->p89si);
+    CDISPLAY("p99.9999999: %16llu [%llu]",  p_m->p99s, p_m->p99si);
 
     return;
 } /* adts_measures_display() */
@@ -564,29 +578,30 @@ adts_measures( uint64_t        *p_arr,
     }
 
     /* Calculated indexes */
-    p_m->p25  = ((25 * (p_m->elems + 1)) / 100);
-    p_m->p50  = ((55 * (p_m->elems + 1)) / 100);
-    p_m->p75  = ((75 * (p_m->elems + 1)) / 100);
-    p_m->p99  = ((99 * (p_m->elems + 1)) / 100);
-    p_m->p39s = ((99.9 * (p_m->elems + 1)) / 100);
-    p_m->p49s = ((99.99 * (p_m->elems + 1)) / 100);
-    p_m->p59s = ((99.999 * (p_m->elems + 1)) / 100);
-    p_m->p69s = ((99.9999 * (p_m->elems + 1)) / 100);
-    p_m->p79s = ((99.99999 * (p_m->elems + 1)) / 100);
-    p_m->p89s = ((99.999999 * (p_m->elems + 1)) / 100);
-    p_m->p99s = ((99.9999999 * (p_m->elems + 1)) / 100);
+    p_m->p25i  = ((25 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p50i  = ((55 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p75i  = ((75 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p99i  = ((99 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p39si = ((99.9 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p49si = ((99.99 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p59si = ((99.999 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p69si = ((99.9999 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p79si = ((99.99999 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p89si = ((99.999999 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p99si = ((99.9999999 * (p_m->elems + 1)) / 100) - 1;
 
-    p_m->p25  = p_arr[p_m->p25 - 1];
-    p_m->p50  = p_arr[p_m->p50 - 1];
-    p_m->p75  = p_arr[p_m->p75 - 1];
-    p_m->p99  = p_arr[p_m->p99 - 1];
-    p_m->p39s = p_arr[p_m->p39s - 1];
-    p_m->p49s = p_arr[p_m->p49s - 1];
-    p_m->p59s = p_arr[p_m->p59s - 1];
-    p_m->p69s = p_arr[p_m->p69s - 1];
-    p_m->p79s = p_arr[p_m->p79s - 1];
-    p_m->p89s = p_arr[p_m->p89s - 1];
-    p_m->p99s = p_arr[p_m->p99s - 1];
+    /* Acquire values */
+    p_m->p25  = p_arr[p_m->p25i];
+    p_m->p50  = p_arr[p_m->p50i];
+    p_m->p75  = p_arr[p_m->p75i];
+    p_m->p99  = p_arr[p_m->p99i];
+    p_m->p39s = p_arr[p_m->p39si];
+    p_m->p49s = p_arr[p_m->p49si];
+    p_m->p59s = p_arr[p_m->p59si];
+    p_m->p69s = p_arr[p_m->p69si];
+    p_m->p79s = p_arr[p_m->p79si];
+    p_m->p89s = p_arr[p_m->p89si];
+    p_m->p99s = p_arr[p_m->p99si];
 
     return;
 } /* adts_measures() */
