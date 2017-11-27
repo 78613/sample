@@ -201,12 +201,13 @@ adts_cycles_baseline( void )
  *    - macro based for pseudo inline capability
  ****************************************************************************
  */
-#define SWAP( _pa, _pb, _type ) { \
-    _type _tmp = *_pa;            \
-                                  \
-    *_pa = *_pb;                  \
-    *_pb = _tmp;                  \
-}
+#define SWAP( _pa, _pb, _type ) \
+do {                            \
+    _type _ptmp = *(_pa);       \
+                                \
+    *(_pa) = *(_pb);            \
+    *(_pb) = _ptmp;             \
+} while (0);
 
 
 /*
@@ -224,26 +225,39 @@ adts_cycles_baseline( void )
  * Space: O(1) // no space scaling
  ****************************************************************************
  */
-void
-adts_shuffle64( uint64_t arr[],
-                size_t   elems )
-{
-    for (int32_t i = 0; i < elems; i++) {
-        //FIXME: Using % i results in pseudo - random.  Research this further
-        int32_t r = rand() % (i + 1);
-        SWAP(&arr[i], &arr[r], uint64_t);
-    }
-
-    return;
-} /* adts_shuffle64() */
-
+#define ADTS_SHUFFLE( _arr, _elems, _type )        \
+do {                                               \
+    for (int64_t _i = 0; _i < (_elems); _i++) {    \
+        int32_t _r = rand() % (_i + 1);            \
+        SWAP(&(_arr[_i]), &(_arr[_r]), _type);     \
+    }                                              \
+} while (0);
 
 
 /*
  ****************************************************************************
- *
+ * Return TRUE if Array is _NOT_ sorted from min to max.
  ****************************************************************************
  */
+#if 0
+#define ADTS_ARR_UNSORTED( _arr, _elems, _rc )      \
+do {                                                \
+    _rc = false;                                    \
+    if (unlikely(1 >= (_elems))) {                  \
+        /* sorted by definition */                  \
+        break;                                      \
+    }                                               \
+                                                    \
+    for (int64_t _i = 1; _i < (_elems); _i++) {     \
+        if ((_arr[_i - 1]) > (_arr[_i])) {          \
+            (_rc) = true;                           \
+            break;                                  \
+        }                                           \
+    }                                               \
+} while (0);
+#endif
+
+#if 1
 bool
 adts_arr_is_not_sorted64( int32_t arr[],
                           size_t  elems )
@@ -265,20 +279,31 @@ adts_arr_is_not_sorted64( int32_t arr[],
 exception:
     return rc;
 } /* adts_arr_is_not_sorted64() */
-
+#endif
 
 /*
  ****************************************************************************
- *
+ * Returns TRUE is Array IS sorted from min to max.
  ****************************************************************************
  */
+#if 0
+#define ADTS_ARR_SORTED( _arr, _elems, _ret )  \
+do {                                           \
+    bool _tmp = false;                         \
+    ADTS_ARR_UNSORTED((_arr), (_elems), _tmp); \
+    _ret = !(_tmp);                            \
+} while (0);
+
+#endif
+
+#if 1
 bool
 adts_arr_is_sorted64( uint64_t arr[],
                       size_t   elems )
 {
     return !(adts_arr_is_not_sorted64(arr, elems));
 } /* adts_arr_is_sorted64() */
-
+#endif
 
 /*
  ****************************************************************************
@@ -370,7 +395,7 @@ adts_sort_quick64( uint64_t arr[],
                    size_t   elems )
 {
     /* shuffle to probabilistically eliminate the N^2 worst case scenario */
-    adts_shuffle64(arr, elems);
+    ADTS_SHUFFLE(arr, elems, uint64_t);
 
     /* start the sort recursion */
     sort_quick64(arr, 0, elems - 1);
@@ -380,99 +405,238 @@ adts_sort_quick64( uint64_t arr[],
 
 
 
+typedef struct {
+    bool          initialized;
+
+    uint64_t      elems; /* Measurements */
+    uint64_t      min;
+    uint64_t      max;
+
+    double        mean;
+    double        median;   /* median */
+    uint64_t      medidx;   /* index of median */
+    uint64_t      medleft;  /* even median ancestor */
+    uint64_t      medright; /* even median ancestor */
+    uint64_t      mode;
+    uint64_t      moden;    /* instances of mode */
+
+    uint64_t      range;
+    double        variance;
+    double        stdev;
+    double        x1; /* 3sigma 68.27 */
+    double        x2; /* 3sigma 95.45 */
+    double        x3; /* 3sigma 99.73 */
+
+    uint64_t      p25; /* quartiles */
+    uint64_t      p50;
+    uint64_t      p75;
+    uint64_t      p99;
+
+    uint64_t      p39s;
+    uint64_t      p49s;
+    uint64_t      p59s;
+    uint64_t      p69s;
+    uint64_t      p79s;
+    uint64_t      p89s;
+    uint64_t      p99s;
+} adts_measures_t;
+
+static void
+adts_measures_init( adts_measures_t *p_meas )
+{
+    memset(p_meas, 0, sizeof(*p_meas));
+    p_meas->min = ~(0);
+    p_meas->initialized = true;
+    return;
+} /* adts_measures_init() */
+
+
+static void
+adts_measures_display( adts_measures_t *p_m )
+{
+    uint64_t min = 0;
+    uint64_t max = 0;
+
+    CDISPLAY("measurements:%16llu",  p_m->elems);
+    CDISPLAY("min:         %16llu",  p_m->min);
+    CDISPLAY("max:         %16llu",  p_m->max);
+    CDISPLAY("range:       %16llu (%llu-%llu)",  p_m->range, p_m->min, p_m->max);
+
+    CDISPLAY("mean:        %16f",    p_m->mean);
+    if (p_m->elems & 0x1) {
+        CDISPLAY("median:      %16f [%llu]: %llu",    p_m->median,
+            p_m->medidx, (uint64_t) p_m->median);
+    }else {
+        CDISPLAY("median:      %16f [%llu]:%llu [%llu]:%llu", p_m->median,
+            (p_m->medidx - 1), p_m->medleft, p_m->medidx, p_m->medright);
+    }
+    CDISPLAY("mode:        %16llu",  p_m->mode);
+    CDISPLAY("variance:    %16f",    p_m->variance);
+    CDISPLAY("std.dev:     %16f",    p_m->stdev);
+
+    /* 3-Sigma || Z-Score */
+    min = ((p_m->mean - p_m->x1) < 0) ? p_m->min : (p_m->mean - p_m->x1);
+    max = (p_m->mean + p_m->x1);
+    CDISPLAY(" x1 68%%      %16f (%llu-%llu)", p_m->x1, min, max);
+
+    min = ((p_m->mean - p_m->x2) < 0) ? p_m->min : (p_m->mean - p_m->x2);
+    max = (p_m->mean + p_m->x2);
+    CDISPLAY(" x2 95%%      %16f (%llu-%llu)", p_m->x2, min, max);
+
+    min = ((p_m->mean - p_m->x3) < 0) ? p_m->min : (p_m->mean - p_m->x3);
+    max = (p_m->mean + p_m->x3);
+    CDISPLAY(" x3 99.7%%    %16f (%llu-%llu)", p_m->x3, min, max);
+
+    /* Quartiles */
+    CDISPLAY("p25:         %16llu",  p_m->p25);
+    CDISPLAY("p50:         %16llu",  p_m->p50);
+    CDISPLAY("p75:         %16llu",  p_m->p75);
+    CDISPLAY("p99:         %16llu",  p_m->p99);
+
+    /* Percentiles */
+    CDISPLAY("p99.9:       %16llu",  p_m->p39s);
+    CDISPLAY("p99.99:      %16llu",  p_m->p49s);
+    CDISPLAY("p99.999:     %16llu",  p_m->p59s);
+    CDISPLAY("p99.9999:    %16llu",  p_m->p69s);
+    CDISPLAY("p99.99999:   %16llu",  p_m->p79s);
+    CDISPLAY("p99.999999:  %16llu",  p_m->p89s);
+    CDISPLAY("p99.9999999: %16llu",  p_m->p99s);
+
+    return;
+} /* adts_measures_display() */
+
+
+
 static void
 utest_control( void )
 {
+
     CDISPLAY("====================================================");
     {
-        CDISPLAY("Baseline:");
+        size_t           iter   = 10;
+        size_t           bytes  = sizeof(uint64_t) * iter;
+        uint64_t        *p_arr  = NULL;
+        uint64_t         sum    = 0;
+        uint64_t         stop   = 0;
+        uint64_t         start  = 0;
+        uint64_t         cycles = 0;
+        adts_measures_t  m;
+        adts_measures_t *p_m = &(m);
 
-        size_t        elems  = 1024 * 1024;
-        size_t        bytes  = sizeof(uint64_t) * elems;
-        float         mean   = 0.0;
-        float         sum    = 0.0;
-        float         var    = 0.0;
-        float         stdev  = 0.0;
-        int32_t       rc     = 0;
-        uint64_t      min    = ~(0);
-        uint64_t      max    = 0;
-        uint64_t      stop   = 0;
-        uint64_t      start  = 0;
-        uint64_t      range  = 0;
-        uint64_t     *p_arr  = NULL;
-        uint64_t      cycles = 0;
-        uint64_t      p25    = 0;
-        uint64_t      p50    = 0;
-        uint64_t      p75    = 0;
-        uint64_t      p99    = 0;
-        uint64_t      p39s   = 0;
-        uint64_t      p49s   = 0;
-        uint64_t      p59s   = 0;
-        uint64_t      p69s   = 0;
-        uint64_t      p79s   = 0;
-        uint64_t      p89s   = 0;
-        uint64_t      p99s   = 0;
+        adts_measures_init(p_m);
 
         p_arr = malloc(bytes);
         assert(p_arr);
         memset(p_arr, 0, bytes);
 
+        p_m->elems = iter;
+
         /* Basic measures */
-        for (int32_t cnt = 0; cnt < elems; cnt++) {
+        for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
             start      = adts_cycles_start();
             stop       = adts_cycles_stop();
             cycles     = stop - start;
-            max        = MAX(max, cycles);
-            min        = MIN(min, cycles);
+
+            p_m->max   = MAX(p_m->max, cycles);
+            p_m->min   = MIN(p_m->min, cycles);
+
             sum       += cycles;
             p_arr[cnt] = cycles;
+            CDISPLAY("[%2llu]: %5llu", cnt, p_arr[cnt]);
         }
 
         /* Advanced measures */
-        range = max - min;
-        mean  = sum / elems;
-        for (int32_t cnt = 0; cnt < elems; cnt++) {
-            stdev += pow((p_arr[cnt] - mean), 2);
+        p_m->range  = p_m->max - p_m->min;
+        p_m->mean   = sum / p_m->elems;
+
+        for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
+            p_m->stdev += pow((p_arr[cnt] - p_m->mean), 2);
         }
-        var   = stdev / elems;
-        stdev = sqrt(var);
+        p_m->variance = p_m->stdev / p_m->elems;
+        p_m->stdev    = sqrt(p_m->variance);
+
+        p_m->x1 = p_m->stdev * 1;
+        p_m->x2 = p_m->stdev * 2;
+        p_m->x3 = p_m->stdev * 3;
 
         /* Percentiles */
-        adts_sort_quick64(p_arr, elems);
-        rc = adts_arr_is_sorted64(p_arr, elems);
-        assert(false == rc);
+        //FIXME: There's a bug in this sort function.....
+        CDISPLAY("..........");
+        adts_sort_quick64(p_arr, p_m->elems);
+        CDISPLAY("..........");
+        for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
+            CDISPLAY("[%2u]: %5llu", cnt, p_arr[cnt]);
+        }
 
-        p25  = (25 * (elems + 1)) / 100;
-        p50  = (50 * (elems + 1)) / 100;
-        p75  = (75 * (elems + 1)) / 100;
-        p99  = (99 * (elems + 1)) / 100;
-        p39s = (99.9 * (elems + 1)) / 100;
-        p49s = (99.99 * (elems + 1)) / 100;
-        p59s = (99.999 * (elems + 1)) / 100;
-        p69s = (99.9999 * (elems + 1)) / 100;
-        p79s = (99.99999 * (elems + 1)) / 100;
-        p89s = (99.999999 * (elems + 1)) / 100;
-        p99s = (99.9999999 * (elems + 1)) / 100;
+        if (p_m->elems & 0x1) {
+            p_m->medidx = p_m->elems / 2;
+            p_m->median = p_arr[p_m->medidx];
+        }else {
+            p_m->medidx   = p_m->elems / 2;
+            p_m->medleft  = p_arr[p_m->medidx - 1];
+            p_m->medright = p_arr[p_m->medidx];
+            p_m->median   = (p_m->medleft + p_m->medright) / 2;
+        }
 
-        CDISPLAY("measures:    %16llu",  elems);
-        CDISPLAY("min:         %16llu",  min);
-        CDISPLAY("max:         %16llu",  max);
-        CDISPLAY("range:       %16llu",  range);
-        CDISPLAY("mean:        %16f",    mean);
-        CDISPLAY("variance:    %16f",    var);
-        CDISPLAY("std.dev:     %16f",    stdev);
-        CDISPLAY("p25:         %16llu",  p_arr[p25]);
-        CDISPLAY("p50:         %16llu",  p_arr[p50]);
-        CDISPLAY("p75:         %16llu",  p_arr[p75]);
-        CDISPLAY("p99:         %16llu",  p_arr[p99]);
-        CDISPLAY("p99.9:       %16llu",  p_arr[p39s]);
-        CDISPLAY("p99.99:      %16llu",  p_arr[p49s]);
-        CDISPLAY("p99.999:     %16llu",  p_arr[p59s]);
-        CDISPLAY("p99.9999:    %16llu",  p_arr[p69s]);
-        CDISPLAY("p99.99999:   %16llu",  p_arr[p79s]);
-        CDISPLAY("p99.999999:  %16llu",  p_arr[p89s]);
-        CDISPLAY("p99.9999999: %16llu",  p_arr[p99s]);
+        /* Calculated indexes */
+        p_m->p25  = ((25 * (p_m->elems + 1)) / 100);
+        p_m->p50  = ((55 * (p_m->elems + 1)) / 100);
+        p_m->p75  = ((75 * (p_m->elems + 1)) / 100);
+        p_m->p99  = ((99 * (p_m->elems + 1)) / 100);
+        p_m->p39s = ((99.9 * (p_m->elems + 1)) / 100);
+        p_m->p49s = ((99.99 * (p_m->elems + 1)) / 100);
+        p_m->p59s = ((99.999 * (p_m->elems + 1)) / 100);
+        p_m->p69s = ((99.9999 * (p_m->elems + 1)) / 100);
+        p_m->p79s = ((99.99999 * (p_m->elems + 1)) / 100);
+        p_m->p89s = ((99.999999 * (p_m->elems + 1)) / 100);
+        p_m->p99s = ((99.9999999 * (p_m->elems + 1)) / 100);
 
+        p_m->p25  = p_arr[p_m->p25 - 1];
+        p_m->p50  = p_arr[p_m->p50 - 1];
+        p_m->p75  = p_arr[p_m->p75 - 1];
+        p_m->p99  = p_arr[p_m->p99 - 1];
+        p_m->p39s = p_arr[p_m->p39s - 1];
+        p_m->p49s = p_arr[p_m->p49s - 1];
+        p_m->p59s = p_arr[p_m->p59s - 1];
+        p_m->p69s = p_arr[p_m->p69s - 1];
+        p_m->p79s = p_arr[p_m->p79s - 1];
+        p_m->p89s = p_arr[p_m->p89s - 1];
+        p_m->p99s = p_arr[p_m->p99s - 1];
+
+#if 0
+        /* mode */
+        {
+            uint64_t  buckets = p_m->median - p_m->min;
+            size_t    lbytes  = buckets * sizeof(uint64_t);
+            uint64_t *p_tmp   = NULL;
+
+            CDISPLAY("buckets: %llu", buckets);
+
+            switch (buckets) {
+                case 0:
+                    p_m->mode = p_m->min;
+                    //FIXME: get hit count.
+                    break;
+                case 1:
+                    assert(true);
+                    break;
+                default:
+            }
+
+            p_tmp = malloc(lbytes);
+            assert(p_tmp);
+            memset(p_arr, 0, lbytes);
+
+            for (int32_t cnt = 0; cnt < buckets; cnt++) {
+                CDISPLAY("[%2u]: %5llu", cnt, p_tmp[cnt]);
+            }
+
+            free(p_tmp);
+        }
+#endif
+
+        adts_measures_display(p_m);
+        //adts_hexdump(p_m, sizeof(*p_m), "?");
         free(p_arr);
     }
 
