@@ -488,7 +488,7 @@ adts_measures_display( adts_measures_t *p_m )
         CDISPLAY("median:      %16f [%llu]:%llu [%llu]:%llu", p_m->median,
             (p_m->medidx - 1), p_m->medleft, p_m->medidx, p_m->medright);
     }
-    CDISPLAY("mode:        %16llu",  p_m->mode);
+    CDISPLAY("mode:        %16llu (%llu) instances",  p_m->mode, p_m->moden);
     CDISPLAY("variance:    %16f",    p_m->variance);
     CDISPLAY("std.dev:     %16f",    p_m->stdev);
 
@@ -524,17 +524,18 @@ adts_measures_display( adts_measures_t *p_m )
 } /* adts_measures_display() */
 
 
-static void
+static int32_t
 adts_measures( uint64_t        *p_arr,
-               size_t           elems,
+               size_t           elements,
                adts_measures_t *p_m )
 {
+    int32_t  rc  = 0;
     uint64_t sum = 0;
 
     adts_measures_init(p_m);
 
     p_m->p_arr = p_arr;
-    p_m->elems = elems;
+    p_m->elems = elements;
 
     /* Basic measures */
     for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
@@ -560,9 +561,9 @@ adts_measures( uint64_t        *p_arr,
 
     /* Percentiles */
     //FIXME: There's a bug in this sort function.....
-    CDISPLAY("..........");
+    CDISPLAY("sort-pre");
     adts_sort_quick64(p_arr, p_m->elems);
-    CDISPLAY("..........");
+    CDISPLAY("sort-post");
     //for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
     //    CDISPLAY("[%2u]: %5llu", cnt, p_arr[cnt]);
     //}
@@ -575,6 +576,66 @@ adts_measures( uint64_t        *p_arr,
         p_m->medleft  = p_arr[p_m->medidx - 1];
         p_m->medright = p_arr[p_m->medidx];
         p_m->median   = (p_m->medleft + p_m->medright) / 2;
+    }
+
+
+    /* mode */
+    {
+        uint64_t  limit   = (uint64_t) (p_m->median + 1);
+        uint64_t  buckets = limit - p_m->min;
+        size_t    bytes   = buckets * sizeof(buckets);
+        uint64_t *p_mode  = NULL;
+        uint64_t *p_vals  = NULL;
+
+        p_mode = malloc(bytes);
+        assert(p_mode);
+        if (NULL == p_mode) {
+            rc = ENOMEM;
+            goto exception;
+        }
+        memset(p_mode, 0, bytes);
+
+        p_vals = malloc(bytes);
+        assert(p_vals);
+        if (NULL == p_vals) {
+            rc = ENOMEM;
+            goto exception;
+        }
+        memset(p_vals, 0, bytes);
+
+        uint64_t prev = p_arr[0];
+        uint64_t curr = 0;
+        int32_t  mcnt = 0;
+        for (int32_t cnt = 0; cnt <= p_m->elems; cnt++) {
+            if (prev != p_arr[cnt]) {
+                mcnt++;
+            }
+            p_vals[mcnt]  = p_arr[cnt];
+            p_mode[mcnt] += 1;
+            prev  = p_arr[cnt];
+        }
+
+        CDISPLAY("Buckets: %llu", buckets);
+        for (int32_t cnt = 0; cnt < buckets; cnt++) {
+            CDISPLAY("[%2u]: %5llu hits: %llu", cnt, p_vals[cnt], p_mode[cnt]);
+            if (p_m->moden < p_mode[cnt]) {
+                p_m->mode  = p_vals[cnt];
+                p_m->moden = p_mode[cnt];
+            }
+        }
+
+        CDISPLAY("..............");
+        /*
+        if (p_mode) {
+            free(p_mode);
+            p_mode = NULL;
+        }
+
+        if (p_vals) {
+            free(p_vals);
+            p_vals = NULL;
+        }
+        */
     }
 
     /* Calculated indexes */
@@ -603,7 +664,8 @@ adts_measures( uint64_t        *p_arr,
     p_m->p89s = p_arr[p_m->p89si];
     p_m->p99s = p_arr[p_m->p99si];
 
-    return;
+exception:
+    return rc;
 } /* adts_measures() */
 
 
@@ -641,136 +703,6 @@ utest_control( void )
         free(p_arr);
     }
 
-    #if 0
-    CDISPLAY("====================================================");
-    {
-        size_t           iter   = 1000 * 1000;
-        size_t           bytes  = sizeof(uint64_t) * iter;
-        uint64_t        *p_arr  = NULL;
-        uint64_t         sum    = 0;
-        uint64_t         stop   = 0;
-        uint64_t         start  = 0;
-        uint64_t         cycles = 0;
-        adts_measures_t  m;
-        adts_measures_t *p_m = &(m);
-
-        adts_measures_init(p_m);
-
-        p_arr = malloc(bytes);
-        assert(p_arr);
-        memset(p_arr, 0, bytes);
-
-        p_m->elems = iter;
-
-        /* Basic measures */
-        for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
-            start      = adts_cycles_start();
-            stop       = adts_cycles_stop();
-            cycles     = stop - start;
-
-            p_m->max   = MAX(p_m->max, cycles);
-            p_m->min   = MIN(p_m->min, cycles);
-
-            sum       += cycles;
-            p_arr[cnt] = cycles;
-            //CDISPLAY("[%2llu]: %5llu", cnt, p_arr[cnt]);
-        }
-
-        /* Advanced measures */
-        p_m->range  = p_m->max - p_m->min;
-        p_m->mean   = sum / p_m->elems;
-
-        for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
-            p_m->stdev += pow((p_arr[cnt] - p_m->mean), 2);
-        }
-        p_m->variance = p_m->stdev / p_m->elems;
-        p_m->stdev    = sqrt(p_m->variance);
-
-        p_m->x1 = p_m->stdev * 1;
-        p_m->x2 = p_m->stdev * 2;
-        p_m->x3 = p_m->stdev * 3;
-
-        /* Percentiles */
-        //FIXME: There's a bug in this sort function.....
-        CDISPLAY("..........");
-        adts_sort_quick64(p_arr, p_m->elems);
-        CDISPLAY("..........");
-        //for (int32_t cnt = 0; cnt < p_m->elems; cnt++) {
-        //    CDISPLAY("[%2u]: %5llu", cnt, p_arr[cnt]);
-        //}
-
-        if (p_m->elems & 0x1) {
-            p_m->medidx = p_m->elems / 2;
-            p_m->median = p_arr[p_m->medidx];
-        }else {
-            p_m->medidx   = p_m->elems / 2;
-            p_m->medleft  = p_arr[p_m->medidx - 1];
-            p_m->medright = p_arr[p_m->medidx];
-            p_m->median   = (p_m->medleft + p_m->medright) / 2;
-        }
-
-        /* Calculated indexes */
-        p_m->p25  = ((25 * (p_m->elems + 1)) / 100);
-        p_m->p50  = ((55 * (p_m->elems + 1)) / 100);
-        p_m->p75  = ((75 * (p_m->elems + 1)) / 100);
-        p_m->p99  = ((99 * (p_m->elems + 1)) / 100);
-        p_m->p39s = ((99.9 * (p_m->elems + 1)) / 100);
-        p_m->p49s = ((99.99 * (p_m->elems + 1)) / 100);
-        p_m->p59s = ((99.999 * (p_m->elems + 1)) / 100);
-        p_m->p69s = ((99.9999 * (p_m->elems + 1)) / 100);
-        p_m->p79s = ((99.99999 * (p_m->elems + 1)) / 100);
-        p_m->p89s = ((99.999999 * (p_m->elems + 1)) / 100);
-        p_m->p99s = ((99.9999999 * (p_m->elems + 1)) / 100);
-
-        p_m->p25  = p_arr[p_m->p25 - 1];
-        p_m->p50  = p_arr[p_m->p50 - 1];
-        p_m->p75  = p_arr[p_m->p75 - 1];
-        p_m->p99  = p_arr[p_m->p99 - 1];
-        p_m->p39s = p_arr[p_m->p39s - 1];
-        p_m->p49s = p_arr[p_m->p49s - 1];
-        p_m->p59s = p_arr[p_m->p59s - 1];
-        p_m->p69s = p_arr[p_m->p69s - 1];
-        p_m->p79s = p_arr[p_m->p79s - 1];
-        p_m->p89s = p_arr[p_m->p89s - 1];
-        p_m->p99s = p_arr[p_m->p99s - 1];
-
-        #if 0
-        /* mode */
-        {
-            uint64_t  buckets = p_m->median - p_m->min;
-            size_t    lbytes  = buckets * sizeof(uint64_t);
-            uint64_t *p_tmp   = NULL;
-
-            CDISPLAY("buckets: %llu", buckets);
-
-            switch (buckets) {
-                case 0:
-                    p_m->mode = p_m->min;
-                    //FIXME: get hit count.
-                    break;
-                case 1:
-                    assert(true);
-                    break;
-                default:
-            }
-
-            p_tmp = malloc(lbytes);
-            assert(p_tmp);
-            memset(p_arr, 0, lbytes);
-
-            for (int32_t cnt = 0; cnt < buckets; cnt++) {
-                CDISPLAY("[%2u]: %5llu", cnt, p_tmp[cnt]);
-            }
-
-            free(p_tmp);
-        }
-        #endif
-
-        adts_measures_display(p_m);
-        //adts_hexdump(p_m, sizeof(*p_m), "?");
-        free(p_arr);
-    }
-    #endif
     return;
 } /* utest_control() */
 
