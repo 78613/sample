@@ -111,64 +111,6 @@ adts_cycles_baseline( void )
 } /* adts_cycles_baseline() */
 
 
-#if 0
-/*
- ****************************************************************************
- *
- *
- ****************************************************************************
- */
-static inline uint64_t
-adts_cycles_baseline( void )
-{
-    uint64_t begin;
-    uint64_t end;
-    unsigned cycles_low,
-             cycles_high,
-             cycles_low1,
-             cycles_high1;
-
-    asm volatile ("CPUID\n\t"
-            "RDTSC\n\t"
-            "mov %%edx, %0\n\t"
-            "mov %%eax, %1\n\t": "=r" (cycles_high), "=r" (cycles_low)
-                :: "%rax", "%rbx", "%rcx", "%rdx");
-
-    /***********************************/
-    /* Test begin                      */
-    /***********************************/
-
-
-    /***********************************/
-    /* Test End                        */
-    /***********************************/
-
-    asm   volatile("RDTSCP\n\t"
-            "mov %%edx, %0\n\t"
-            "mov %%eax, %1\n\t"
-            "CPUID\n\t": "=r" (cycles_high1), "=r" (cycles_low1)
-                :: "%rax", "%rbx", "%rcx", "%rdx");
-
-    begin = (((uint64_t) cycles_high  << 32) | cycles_low);
-    end   = (((uint64_t) cycles_high1 << 32) | cycles_low1);
-
-    //CDISPLAY("%llu", end - begin);
-
-    #if 0
-    if ( (end - begin) < 0) {
-        /* OVERVFLOW!!!*/
-        times[j][i] = 0;
-    }
-    else
-    {
-        times[j][i] = end - begin;
-    }
-    #endif
-
-    return (end - begin);
-} /* adts_cycles_baseline() */
-#endif
-
 
 /******************************************************************************
  * #     # #     #   ###   ####### ####### #######  #####  #######  #####
@@ -179,6 +121,28 @@ adts_cycles_baseline( void )
  * #     # #    ##    #       #       #    #       #     #    #    #     #
  *  #####  #     #   ###      #       #    #######  #####     #     #####
 ******************************************************************************/
+/**
+ **************************************************************************
+ * \brief
+ *   Compile time structure sanity
+ *
+ * \details
+ *   Sanitize the abstract data type interface.  Enforced in header file so
+ *   as to catch improper usage/include by unauthorized callers.
+ *
+ **************************************************************************
+ */
+static void
+utest_cycles_bytes( void )
+{
+    CDISPLAY("[%u]", sizeof(cycles_t));
+    CDISPLAY("[%u]", sizeof(adts_cycles_t));
+
+    _Static_assert(sizeof(cycles_t) <= sizeof(adts_cycles_t),
+        "Mismatch structs detected");
+
+    return;
+} /* utest_cycles_bytes() */
 
 
 /*
