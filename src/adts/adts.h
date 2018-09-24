@@ -7,6 +7,7 @@
 #include <adts_time.h>
 #include <adts_hash.h>
 #include <adts_math.h>
+#include <adts_meas.h>
 #include <adts_tree.h>
 #include <adts_trie.h>
 #include <adts_graph.h>
