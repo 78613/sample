@@ -286,7 +286,7 @@ utest_control( void )
 
         p_adts_meas = adts_meas_create(elems);
 
-        for (uint64_t cnt = 0; cnt < elems + 8; cnt++) {
+        for (uint64_t cnt = 0; cnt < elems + 2; cnt++) {
             (void) adts_meas_add(p_adts_meas, cnt);
         }
 
