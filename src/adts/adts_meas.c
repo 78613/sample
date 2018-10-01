@@ -36,7 +36,9 @@ typedef enum {
 } meas_state_t;
 
 typedef struct {
-    //FIXME: consider adding a valid bit
+    uint32_t valid : 1,
+             resv  :31;
+    uint32_t label;
     uint64_t value; // Measured value
 } meas_entry_t;
 
@@ -51,15 +53,6 @@ typedef struct {
     meas_entry_t *entry;
 } meas_t;
 
-#if 0
-typedef struct {
-    uint64_t min;
-    uint64_t max;
-    uint64_t total;
-    uint32_t entries;
-    uint64_t entry[];
-} meas_public_t;
-#endif
 
 /******************************************************************************
  * ####### #     # #     #  #####  #######   ###   ####### #     #  #####
@@ -70,6 +63,15 @@ typedef struct {
  * #       #     # #    ## #     #    #       #    #     # #    ## #     #
  * #        #####  #     #  #####     #      ###   ####### #     #  #####
 ******************************************************************************/
+
+// IOCTLs
+// WorkItems
+// Mem Alloc / Free
+// Nbl Alloc / Free / Clone
+// OIDs
+// NIC Create / Destroy
+// VMBus Pause / unpause
+
 static inline int32_t
 meas_input_sanity( meas_t *p_meas )
 {
@@ -92,14 +94,97 @@ exception:
 
 
 
+void
+adts_meas_output( void          *p_handle,
+                  meas_public_t *p_out,
+                  uint32_t       bytes )
+{
+    meas_t        *p_meas   = NULL;
+    int32_t        rc       = 0;
+    adts_sanity_t *p_sanity = NULL;
+
+    rc = meas_input_sanity(p_handle);
+    if (rc) {
+        goto exception;
+    }
+
+    p_meas = (meas_t *) p_handle;
+
+    p_sanity = &(p_meas->sanity);
+    adts_sanity_entry(p_sanity);
+
+    p_out->min     = p_meas->min;
+    p_out->max     = p_meas->max;
+    p_out->total   = p_meas->total;
+    p_out->entries = p_meas->entries;
+
+    //FIXME: copy elemts over here...
+
+
+    adts_sanity_exit(p_sanity);
+
+exception:
+    return;
+} /* adts_meas_output() */
+
+
+
+
+static inline void
+meas_display( void *p_handle )
+{
+    meas_t        *p_meas   = NULL;
+    int32_t        rc       = 0;
+    adts_sanity_t *p_sanity = NULL;
+
+    rc = meas_input_sanity(p_handle);
+    if (rc) {
+        goto exception;
+    }
+
+    p_meas = (meas_t *) p_handle;
+
+    p_sanity = &(p_meas->sanity);
+    adts_sanity_entry(p_sanity);
+
+    CDISPLAY("p_meas             = %p",   p_meas);
+    CDISPLAY("p_meas->state      = %p",   p_meas->state);
+    CDISPLAY("p_meas->sanity     = %p",   p_meas->sanity);
+    CDISPLAY("p_meas->curr       = %u",   p_meas->curr);
+    CDISPLAY("p_meas->entries    = %u",   p_meas->entries);
+    CDISPLAY("p_meas->total      = %llu", p_meas->total);
+    CDISPLAY("p_meas->min        = %llu", p_meas->min);
+    CDISPLAY("p_meas->max        = %llu", p_meas->max);
+    CDISPLAY("p_meas->entry      = %p",   p_meas->entry);
+
+    for (int32_t cnt = 0; cnt < p_meas->entries; cnt++) {
+        CDISPLAY("p_meas->entry[%03llu] valid = %u label = %p value = %llu",
+                cnt,
+                p_meas->entry[cnt].valid,
+                p_meas->entry[cnt].label,
+                p_meas->entry[cnt].value);
+    }
+
+    adts_sanity_exit(p_sanity);
+
+exception:
+    return;
+} /* meas_display() */
+
+
+
+
 static inline void
 meas_add( meas_t  *p_meas,
-          uint64_t value )
+          uint64_t value,
+          int32_t  label )
 {
     p_meas->min = MIN(p_meas->min, value);
     p_meas->max = MAX(p_meas->max, value);
 
     p_meas->entry[p_meas->curr].value = value;
+    p_meas->entry[p_meas->curr].valid = true;
+    p_meas->entry[p_meas->curr].label = label;
     p_meas->curr++;
     if (p_meas->curr >= p_meas->entries) {
         p_meas->curr = 0;
@@ -114,11 +199,12 @@ meas_add( meas_t  *p_meas,
 
 
 int32_t
-adts_meas_add( adts_meas_t *p_adts_meas,
-               uint64_t     value )
+adts_meas_add( void     *p_handle,
+               uint64_t  value,
+               int32_t   label )
 {
     int32_t        rc       = 0;
-    meas_t        *p_meas   = (meas_t *) p_adts_meas;
+    meas_t        *p_meas   = (meas_t *) p_handle;
     adts_sanity_t *p_sanity = NULL;
 
     rc = meas_input_sanity(p_meas);
@@ -129,7 +215,7 @@ adts_meas_add( adts_meas_t *p_adts_meas,
     p_sanity = &(p_meas->sanity);
     adts_sanity_entry(p_sanity);
 
-    meas_add(p_meas, value);
+    meas_add(p_meas, value, label);
 
     adts_sanity_exit(p_sanity);
 
@@ -141,10 +227,10 @@ exception:
 
 
 int32_t
-adts_meas_destroy( adts_meas_t *p_adts_meas )
+adts_meas_destroy( void *p_handle )
 {
     int32_t        rc       = 0;
-    meas_t        *p_meas   = (meas_t *) p_adts_meas;
+    meas_t        *p_meas   = (meas_t *) p_handle;
     adts_sanity_t *p_sanity = NULL;
 
     rc = meas_input_sanity(p_meas);
@@ -167,12 +253,12 @@ exception:
 
 
 
-adts_meas_t *
+void *
 adts_meas_create( uint32_t elems )
 {
-    uint32_t     bytes       = 0;
-    meas_t      *p_meas      = NULL;
-    adts_meas_t *p_adts_meas = NULL;
+    uint32_t  bytes    = 0;
+    meas_t   *p_meas   = NULL;
+    void     *p_handle = NULL;
 
     if (elems < ADTS_MEAS_MIN_ENTRIES) {
         goto exception;
@@ -191,17 +277,17 @@ adts_meas_create( uint32_t elems )
     p_meas->min      = -1;
     p_meas->max      = 0;
     p_meas->entry    = (char *) p_meas + sizeof(*p_meas);
-    p_adts_meas      = (adts_meas_t *) p_meas;
+    p_handle         = (void *) p_meas;
 
 exception:
-    return p_adts_meas;
+    return p_handle;
 } /* adts_meas_create() */
 
 
 
 
 void
-adts_meas_destroy_embedded( void    *p_handle )
+adts_meas_destroy_embedded( void  *p_handle )
 {
     int32_t        rc       = 0;
     meas_t        *p_meas   = (meas_t *) p_handle;
@@ -249,8 +335,6 @@ adts_meas_create_embedded( int8_t   *p_mem,
     uint32_t  required  = 0;
     uint32_t  remaining = ibytes;
 
-    *p_errout = 0;
-
     /* 64bit alignment required. */
     offset = (uint64_t) p_mem & 0x7;
     if (offset) {
@@ -268,6 +352,7 @@ adts_meas_create_embedded( int8_t   *p_mem,
     }
 
     /* Sanity */
+    *p_errout = 0;
     memset(p_mem, 0, ibytes);
 
     /* Derive elements from remaining space */
@@ -280,37 +365,12 @@ adts_meas_create_embedded( int8_t   *p_mem,
     p_meas->max      = 0;
     p_meas->entry    = (char *) p_meas + sizeof(*p_meas);
 
-    p_handle         = (adts_meas_t *) p_meas;
+    p_handle         = p_meas;
 
 exception:
     return p_handle;
 } /* adts_meas_create_embedded() */
 
-
-
-
-void
-meas_display( void *p_mem )
-{
-    meas_t *p_meas = (meas_t *) p_mem;
-
-    CDISPLAY("p_meas             = %p", p_meas);
-    CDISPLAY("p_meas->state      = %p", p_meas->state);
-    CDISPLAY("p_meas->sanity     = %p", p_meas->sanity);
-    CDISPLAY("p_meas->curr       = %u", p_meas->curr);
-    CDISPLAY("p_meas->entries    = %u", p_meas->entries);
-    CDISPLAY("p_meas->total      = %llu", p_meas->total);
-    CDISPLAY("p_meas->min        = %llu", p_meas->min);
-    CDISPLAY("p_meas->max        = %llu", p_meas->max);
-    CDISPLAY("p_meas->entry      = %p", p_meas->entry);
-
-    for (int32_t cnt = 0; cnt < p_meas->entries; cnt++) {
-        CDISPLAY("p_meas->entry[%03llu].value = %llu",
-                cnt, p_meas->entry[cnt].value);
-    }
-
-    return;
-} /* meas_display() */
 
 
 /******************************************************************************
@@ -334,17 +394,6 @@ meas_display( void *p_mem )
  *
  **************************************************************************
  */
-static void
-utest_meas_bytes( void )
-{
-    CDISPLAY("[%u]", sizeof(meas_t));
-    CDISPLAY("[%u]", sizeof(adts_meas_t));
-
-    _Static_assert(sizeof(meas_t) <= sizeof(adts_meas_t),
-        "Mismatch structs detected");
-
-    return;
-} /* utest_meas_bytes() */
 
 
 /*
@@ -356,18 +405,14 @@ utest_meas_bytes( void )
 static void
 utest_control( void )
 {
-    char data[] = {1,4,5,7,3,4,8,5,3,5,9,7,5,2,6,5,9,8,6,6,22};
-
-    CDISPLAY("=========================================================");
-    {
-        utest_meas_bytes();
-    }
+    char    data[] = {1,4,5,7,3,4,8,5,3,5,9,7,5,2,6,5,9,8,6,6,22};
+    int32_t label  = EYEC4('A','B','C','D');
 
     CDISPLAY("=========================================================");
     {
         //TEST: insufficient elements.
-        uint32_t     elems       = 0;
-        adts_meas_t *p_adts_meas = NULL;
+        uint32_t  elems       = 0;
+        void     *p_adts_meas = NULL;
 
         p_adts_meas = adts_meas_create(elems);
         assert(NULL == p_adts_meas);
@@ -376,7 +421,7 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         //TEST: Good Create
-        adts_meas_t *p_adts_meas = NULL;
+        void *p_adts_meas = NULL;
 
         p_adts_meas = adts_meas_create(1024);
         adts_meas_destroy(p_adts_meas);
@@ -385,9 +430,9 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         //TEST: visual dump
-        uint32_t     elems       = 8;
-        uint32_t     bytes       = 0;
-        adts_meas_t *p_adts_meas = NULL;
+        uint32_t   elems       = 8;
+        uint32_t   bytes       = 0;
+        void      *p_adts_meas = NULL;
 
         p_adts_meas = adts_meas_create(elems);
 
@@ -399,13 +444,13 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         //TEST: visual dump amd iterate
-        uint32_t     elems       = 16;
-        uint32_t     bytes       = 0;
-        adts_meas_t *p_adts_meas = NULL;
+        uint32_t  elems       = 16;
+        uint32_t  bytes       = 0;
+        void     *p_adts_meas = NULL;
 
         p_adts_meas = adts_meas_create(elems);
         for (uint64_t cnt = 0; cnt < sizeof(data); cnt++) {
-            (void) adts_meas_add(p_adts_meas, data[cnt]);
+            (void) adts_meas_add(p_adts_meas, data[cnt], label);
         }
 
         bytes  =  sizeof(*p_adts_meas);
@@ -424,7 +469,7 @@ utest_control( void )
 
         p_adts_meas = adts_meas_create_embedded(arr, bytes, &err);
         for (uint64_t cnt = 0; cnt < sizeof(data); cnt++) {
-            (void) adts_meas_add(p_adts_meas, data[cnt]);
+            (void) adts_meas_add(p_adts_meas, data[cnt], label);
         }
 
         adts_hexdump(p_adts_meas, bytes, "MEAS Embedded");
@@ -434,7 +479,7 @@ utest_control( void )
     CDISPLAY("=========================================================");
     {
         //TEST: good visual dump amd iterate - compare to above
-        char         arr[256]    = {0};
+        char         arr[512]    = {0};
         int32_t      err         = 0;
         uint32_t     bytes       = sizeof(arr);
         void        *p_adts_meas = NULL;
@@ -442,30 +487,30 @@ utest_control( void )
         p_adts_meas = adts_meas_create_embedded(arr, bytes, &err);
 
         for (uint64_t cnt = 0; cnt < sizeof(data); cnt++) {
-            (void) adts_meas_add(p_adts_meas, data[cnt]);
+            (void) adts_meas_add(p_adts_meas, data[cnt], label);
         }
 
         adts_hexdump(p_adts_meas, bytes, "MEAS Embedded");
         meas_display(p_adts_meas);
     }
-
+#if 0
     CDISPLAY("=========================================================");
     {
         //TEST: good visual dump amd iterate - compare to above after destroy
-        char         arr[256]    = {0};
+        char         arr[512]    = {0};
         int32_t      err         = 0;
         uint32_t     bytes       = sizeof(arr);
         void        *p_adts_meas = NULL;
 
         p_adts_meas = adts_meas_create_embedded(arr, bytes, &err);
         for (uint64_t cnt = 0; cnt < sizeof(data); cnt++) {
-            (void) adts_meas_add(p_adts_meas, data[cnt]);
+            (void) adts_meas_add(p_adts_meas, data[cnt], label);
         }
         adts_meas_destroy_embedded(p_adts_meas);
         adts_hexdump(p_adts_meas, bytes, "MEAS Embedded");
         meas_display(p_adts_meas);
     }
-
+#endif
     return;
 } /* utest_control() */
 
