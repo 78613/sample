@@ -388,9 +388,6 @@ typedef struct {
     uint64_t      range;
     double        variance;
     double        stdev;
-    double        x1; /* 3sigma 68.27 */
-    double        x2; /* 3sigma 95.45 */
-    double        x3; /* 3sigma 99.73 */
 
     uint64_t      p25; /* quartiles */
     uint64_t      p50;
@@ -456,19 +453,6 @@ adts_measures_display( adts_measures_t *p_m )
     CDISPLAY("variance:    %16f",    p_m->variance);
     CDISPLAY("std.dev:     %16f",    p_m->stdev);
 
-    /* 3-Sigma || Z-Score */
-    min = ((p_m->mean - p_m->x1) < p_m->min) ? p_m->min : (p_m->mean - p_m->x1);
-    max = ((p_m->mean + p_m->x1) > p_m->max) ? p_m->max : (p_m->mean + p_m->x1);
-    CDISPLAY(" x1 68%%      %16f (%llu-%llu)", p_m->x1, min, max);
-
-    min = ((p_m->mean - p_m->x2) < p_m->min) ? p_m->min : (p_m->mean - p_m->x2);
-    max = ((p_m->mean + p_m->x2) > p_m->max) ? p_m->max : (p_m->mean + p_m->x2);
-    CDISPLAY(" x2 95%%      %16f (%llu-%llu)", p_m->x2, min, max);
-
-    min = ((p_m->mean - p_m->x3) < p_m->min) ? p_m->min : (p_m->mean - p_m->x3);
-    max = ((p_m->mean + p_m->x3) > p_m->max) ? p_m->max : (p_m->mean + p_m->x3);
-    CDISPLAY(" x3 99.7%%    %16f (%llu-%llu)", p_m->x3, min, max);
-
     /* Quartiles */
     CDISPLAY("p25:         %16llu [%llu]",  p_m->p25, p_m->p25i);
     CDISPLAY("p50:         %16llu [%llu]",  p_m->p50, p_m->p50i);
@@ -519,10 +503,6 @@ adts_measures( uint64_t        *p_arr,
     p_m->variance = p_m->stdev / p_m->elems;
     p_m->stdev    = sqrt(p_m->variance);
 
-    p_m->x1 = p_m->stdev * 1;
-    p_m->x2 = p_m->stdev * 2;
-    p_m->x3 = p_m->stdev * 3;
-
     /* Percentiles */
     //FIXME: There's a bug in this sort function.....
     CDISPLAY("sort-pre");
@@ -542,7 +522,7 @@ adts_measures( uint64_t        *p_arr,
         p_m->median   = (p_m->medleft + p_m->medright) / 2;
     }
 
-
+    #if 1
     /* mode */
     {
         uint64_t  limit   = (uint64_t) (p_m->median + 1);
@@ -576,7 +556,7 @@ adts_measures( uint64_t        *p_arr,
             }
             p_vals[mcnt]  = p_arr[cnt];
             p_mode[mcnt] += 1;
-            prev  = p_arr[cnt];
+            prev          = p_arr[cnt];
         }
 
         CDISPLAY("Buckets: %llu", buckets);
@@ -594,13 +574,16 @@ adts_measures( uint64_t        *p_arr,
             free(p_mode);
             p_mode = NULL;
         }
+		*/
 
+		/*
         if (p_vals) {
             free(p_vals);
             p_vals = NULL;
         }
-        */
+		*/
     }
+    #endif
 
     /* Calculated indexes */
     p_m->p25i  = ((25 * (p_m->elems + 1)) / 100) - 1;

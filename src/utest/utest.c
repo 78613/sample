@@ -27,8 +27,8 @@ utest_adts( void )
     utest_adts_trie();
     utest_adts_time();
     */
-    //utest_adts_cycles();
-	utest_adts_meas();
+    utest_adts_cycles();
+	//utest_adts_meas();
     /*
     utest_adts_stack();
     utest_adts_queue();
