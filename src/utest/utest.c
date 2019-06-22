@@ -28,7 +28,7 @@ utest_adts( void )
     utest_adts_time();
     */
     //utest_adts_cycles();
-	utest_adts_meas();
+	//utest_adts_meas();
     /*
     utest_adts_stack();
     utest_adts_queue();
@@ -36,6 +36,7 @@ utest_adts( void )
     utest_adts_hexdump();
     utest_adts_snapshot();
     */
+    utest_wtest();
 
     return;
 } /* utest_adts() */

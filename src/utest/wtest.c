@@ -213,6 +213,18 @@ utest_control( void )
         test_incrementer();
     }
 
+    CDISPLAY("=========================================================");
+    {
+        uint8_t macaddr[6] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+
+        CDISPLAY("%p", macaddr);
+        CDISPLAY("%p", &macaddr);
+        CDISPLAY("%p", macaddr[0]);
+        CDISPLAY("%p", &macaddr[0]);
+        CDISPLAY("%p", *(uint64_t *) &macaddr[0]);
+    }
+
+
     return;
 } /* utest_control() */
 
