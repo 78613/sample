@@ -389,12 +389,16 @@ typedef struct {
     double        variance;
     double        stdev;
 
-    uint64_t      p25; /* quartiles */
+    uint64_t      p1;   /* min percentiles */
+    uint64_t      p10; 
+    uint64_t      p25; 
     uint64_t      p50;
     uint64_t      p75;
     uint64_t      p99;
 
-    uint64_t      p25i; /* indexes */
+    uint64_t      p1i;  /* indexes */
+    uint64_t      p10i; 
+    uint64_t      p25i; 
     uint64_t      p50i;
     uint64_t      p75i;
     uint64_t      p99i;
@@ -454,6 +458,8 @@ adts_measures_display( adts_measures_t *p_m )
     CDISPLAY("std.dev:     %16f",    p_m->stdev);
 
     /* Quartiles */
+    CDISPLAY("p1:          %16llu [%llu]",  p_m->p1,  p_m->p1i);
+    CDISPLAY("p10:         %16llu [%llu]",  p_m->p10, p_m->p10i);
     CDISPLAY("p25:         %16llu [%llu]",  p_m->p25, p_m->p25i);
     CDISPLAY("p50:         %16llu [%llu]",  p_m->p50, p_m->p50i);
     CDISPLAY("p75:         %16llu [%llu]",  p_m->p75, p_m->p75i);
@@ -471,6 +477,19 @@ adts_measures_display( adts_measures_t *p_m )
     return;
 } /* adts_measures_display() */
 
+static uint64_t
+idx_calc( uint64_t elems,
+          double   percentile )
+{
+    double tmp = 0;
+
+    tmp  = elems + 1;
+    tmp *= percentile;
+    tmp /= 100;
+    tmp -= 1;
+
+    return (uint64_t) tmp;
+} /* idx_calc() */
 
 static int32_t
 adts_measures( uint64_t        *p_arr,
@@ -586,19 +605,23 @@ adts_measures( uint64_t        *p_arr,
     #endif
 
     /* Calculated indexes */
-    p_m->p25i  = ((25 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p50i  = ((55 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p75i  = ((75 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p99i  = ((99 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p39si = ((99.9 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p49si = ((99.99 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p59si = ((99.999 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p69si = ((99.9999 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p79si = ((99.99999 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p89si = ((99.999999 * (p_m->elems + 1)) / 100) - 1;
-    p_m->p99si = ((99.9999999 * (p_m->elems + 1)) / 100) - 1;
+    p_m->p1i   = idx_calc(p_m->elems, 1);
+    p_m->p10i  = idx_calc(p_m->elems, 10);
+    p_m->p25i  = idx_calc(p_m->elems, 25);
+    p_m->p50i  = idx_calc(p_m->elems, 50);
+    p_m->p75i  = idx_calc(p_m->elems, 75);
+    p_m->p99i  = idx_calc(p_m->elems, 99);
+    p_m->p39si = idx_calc(p_m->elems, 99.9);
+    p_m->p49si = idx_calc(p_m->elems, 99.99);
+    p_m->p59si = idx_calc(p_m->elems, 99.999);
+    p_m->p69si = idx_calc(p_m->elems, 99.9999);
+    p_m->p79si = idx_calc(p_m->elems, 99.99999);
+    p_m->p89si = idx_calc(p_m->elems, 99.999999);
+    p_m->p99si = idx_calc(p_m->elems, 99.9999999);
 
     /* Acquire values */
+    p_m->p1   = p_arr[p_m->p1i ];
+    p_m->p10  = p_arr[p_m->p10i];
     p_m->p25  = p_arr[p_m->p25i];
     p_m->p50  = p_arr[p_m->p50i];
     p_m->p75  = p_arr[p_m->p75i];
@@ -615,15 +638,25 @@ exception:
     return rc;
 } /* adts_measures() */
 
-
-
 static void
 utest_control( void )
 {
 
+    uint64_t elems = 1024*1024*16;
+
     CDISPLAY("====================================================");
     {
-        size_t           iter   = 1000 * 1000;
+        CDISPLAY("idx      1: %u", idx_calc(elems, 1));
+        CDISPLAY("idx     10: %u", idx_calc(elems, 10));
+        CDISPLAY("idx     25: %u", idx_calc(elems, 25));
+        CDISPLAY("idx     50: %u", idx_calc(elems, 50));
+        CDISPLAY("idx     75: %u", idx_calc(elems, 75));
+        CDISPLAY("idx 99.999: %u", idx_calc(elems, 99.999));
+    }
+
+    CDISPLAY("====================================================");
+    {
+        size_t           iter   = elems;
         size_t           bytes  = sizeof(uint64_t) * iter;
         uint64_t        *p_arr  = NULL;
         uint64_t         stop   = 0;
