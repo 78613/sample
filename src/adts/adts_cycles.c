@@ -6,7 +6,6 @@
 
 /* Toolbox */
 #include <adts_cycles.h>
-#include <adts_sanity.h>
 #include <adts_private.h>
 #include <adts_display.h>
 
@@ -390,15 +389,15 @@ typedef struct {
     double        stdev;
 
     uint64_t      p1;   /* min percentiles */
-    uint64_t      p10; 
-    uint64_t      p25; 
+    uint64_t      p10;
+    uint64_t      p25;
     uint64_t      p50;
     uint64_t      p75;
     uint64_t      p99;
 
     uint64_t      p1i;  /* indexes */
-    uint64_t      p10i; 
-    uint64_t      p25i; 
+    uint64_t      p10i;
+    uint64_t      p25i;
     uint64_t      p50i;
     uint64_t      p75i;
     uint64_t      p99i;
@@ -642,7 +641,7 @@ static void
 utest_control( void )
 {
 
-    uint64_t elems = 1024*1024*16;
+    uint64_t elems = 1024*1024*4;
 
     CDISPLAY("====================================================");
     {
