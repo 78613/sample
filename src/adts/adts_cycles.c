@@ -579,7 +579,7 @@ adts_measures( uint64_t        *p_arr,
 
         CDISPLAY("Buckets: %llu", buckets);
         for (int32_t cnt = 0; cnt < buckets; cnt++) {
-            CDISPLAY("[%2u]: %5llu hits: %llu", cnt, p_vals[cnt], p_mode[cnt]);
+            CDISPLAY("[%2u]: %8llu hits: %llu", cnt, p_vals[cnt], p_mode[cnt]);
             if (p_m->moden < p_mode[cnt]) {
                 p_m->mode  = p_vals[cnt];
                 p_m->moden = p_mode[cnt];
@@ -641,10 +641,12 @@ static void
 utest_control( void )
 {
 
-    uint64_t elems = 1024*1024*4;
+    uint64_t elems = 1024*1024*1;
 
+    #if 0
     CDISPLAY("====================================================");
     {
+        /* Validate index calculation per percentile input. */
         CDISPLAY("idx      1: %u", idx_calc(elems, 1));
         CDISPLAY("idx     10: %u", idx_calc(elems, 10));
         CDISPLAY("idx     25: %u", idx_calc(elems, 25));
@@ -652,6 +654,7 @@ utest_control( void )
         CDISPLAY("idx     75: %u", idx_calc(elems, 75));
         CDISPLAY("idx 99.999: %u", idx_calc(elems, 99.999));
     }
+    #endif
 
     CDISPLAY("====================================================");
     {
