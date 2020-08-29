@@ -15,7 +15,7 @@ utest_adts( void )
 {
     //utest_adts_rbt();
     //utest_adts_eyec();
-    //utest_adts_bits();
+    utest_adts_bits();
     //utest_adts_time();
     //utest_adts_list();
     //utest_adts_heap();
@@ -25,7 +25,7 @@ utest_adts( void )
     //utest_adts_tree();
     //utest_adts_trie();
     //utest_adts_time();
-      utest_adts_cycles();
+    //utest_adts_cycles();
 	//utest_adts_meas();
     //utest_adts_stack();
     //utest_adts_queue();

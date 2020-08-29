@@ -161,6 +161,22 @@ adts_bit_clear_lsb_to_kth( int32_t value,
  ****************************************************************************
  */
 int32_t
+adts_bit_clear_lsb_to_kth2( int32_t value,
+                            int32_t bit )
+{
+    /* altenate method with right shift, but less efficient */
+    uint32_t mask = ~(((uint32_t) -1) >> (32 - bit));
+
+    return value & mask;
+} /* adts_bit_clear_lsb_to_kth2() */
+
+/*
+ ****************************************************************************
+ *
+ *
+ ****************************************************************************
+ */
+int32_t
 adts_bit_toggle( int32_t value,
                  int32_t bit )
 {
@@ -295,6 +311,7 @@ utest_control( void )
                           3,
                           9,
                          -1,
+                        -37,
                      };
     const size_t   elems = sizeof(arr) / sizeof(int32_t);
 
@@ -342,6 +359,19 @@ utest_control( void )
         for (size_t cnt = 0; cnt < elems; cnt++) {
             int32_t val = arr[cnt];
             int32_t out = adts_bit_clear_lsb_to_kth(val, bit);
+            CDISPLAY("%3i bit %2i  %3i", val, bit, out);
+            adts_bit_display_32(val);
+            adts_bit_display_32(out);
+        }
+    }
+
+    CDISPLAY("=========================================================");
+    {
+        int32_t bit    = 4;
+
+        for (size_t cnt = 0; cnt < elems; cnt++) {
+            int32_t val = arr[cnt];
+            int32_t out = adts_bit_clear_lsb_to_kth2(val, bit);
             CDISPLAY("%3i bit %2i  %3i", val, bit, out);
             adts_bit_display_32(val);
             adts_bit_display_32(out);

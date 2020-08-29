@@ -39,7 +39,6 @@
 #xCFLAGS  += -v # Display compilation commands / stages
 #xCFLAGS  += -Q # Print compiled function and statistics
 
-
  xCFLAGS  += -Ofast # Enables all the optimizations from -O3 along with other 
                     # aggressive optimizations that may violate strict 
                     # compliance with language standards
