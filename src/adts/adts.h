@@ -13,6 +13,7 @@
 #include <adts_graph.h>
 #include <adts_queue.h>
 #include <adts_stack.h>
+#include <adts_matrix.h>
 #include <adts_cycles.h>
 #include <adts_hexdump.h>
 #include <adts_display.h>
