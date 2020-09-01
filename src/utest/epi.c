@@ -120,8 +120,6 @@ utest_control( void )
         }
     }
 
-
-
     return;
 } /* utest_control() */
 
