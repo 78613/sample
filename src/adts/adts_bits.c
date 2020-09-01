@@ -198,7 +198,6 @@ adts_bit_clear_lsb( int32_t val )
     return (val & (val - 1));
 } /* adts_bit_clear_lsb() */
 
-
 /*
  ****************************************************************************
  *
@@ -225,6 +224,7 @@ adts_bit_count( int32_t val )
 
     while (val) {
         bits++;
+        adts_bit_display_32(val);
         val = val & (val - 1);
     }
 
@@ -307,6 +307,8 @@ utest_control( void )
                           2,
                           8,
                         128,
+                        122,
+                         48,
                          15,
                           3,
                           9,
@@ -410,7 +412,6 @@ utest_control( void )
             CDISPLAY("%3i ->  %3i", val, out);
         }
     }
-
 
     CDISPLAY("=========================================================");
     {
