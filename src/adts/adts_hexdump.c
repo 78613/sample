@@ -46,6 +46,12 @@ temporary_hexdump_stubfunc( char    *p_data,
 
     memset(buffer, 0, 128);
 
+    // FIXME:
+    // There's a nasty bug below where the last 16bytes are truncated, I don't have
+    // time to fix this right now due to other priorities, but adding 16bytes is
+    // a tactical fix until I have time for the real fix.
+    bytes += 16;
+
     // Printing the ruler...
     printf("        +0          +4          +8          +c            0   4   8   C   \n");
 
@@ -101,7 +107,7 @@ adts_hexdump_private( char            *p_data,
 {
 
     printf("\n");
-    printf("---------------------------------------------------------------\n");
+    printf("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
     adts_snapshot_display(p_snap);
 
     printf("     Data:    %p \n", p_data);
@@ -109,13 +115,14 @@ adts_hexdump_private( char            *p_data,
     if (p_msg) {
     	printf("     Message: \"%s\"\n", p_msg);
     }
-    printf("---------------------------------------------------------------\n");
-    printf("\n");
 
+    printf("\n");
     temporary_hexdump_stubfunc(p_data, bytes);
+    printf("\n");
+    printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
 
     return;
-} /* adts_hexdump() */
+} /* adts_hexdump_private() */
 
 
 
