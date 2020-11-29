@@ -50,6 +50,7 @@ utest_control( void )
 
     //utest_cci();
     utest_cci_c1();
+    utest_cci_c2();
 
     return;
 } /* utest_control() */

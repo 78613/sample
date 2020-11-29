@@ -285,7 +285,8 @@ cci_c1_4( char   *p_str,
  * Tests...
  * - aaaaaa -> all same
  * - abcd -> returns orig string
- *   aabbccdd -> mixed
+ * - aabbccdd -> mixed
+ * - aaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbb -> >9 o each letter using >= 2 slots
  * - \0
  * - 0
  *
@@ -293,6 +294,34 @@ cci_c1_4( char   *p_str,
  */
 // O(n) time complexity     -> single pass calc
 // O(n-1) space complexity  -> approximates n since 1 char diff suffices to alloc
+static size_t
+cci_c1_5_get_compressed_bytes( char         *p_str,
+                               const size_t  limit )
+{
+    char   tmp    = p_str[0];
+    size_t bytes  = 2;
+    size_t count  = 1;
+
+    CDISPLAY("Limit = %u", limit);
+    for (int32_t i = 1; i < limit; i++) {
+        CDISPLAY("[%u] %c", i, p_str[i]);
+        if (p_str[i] == p_str[i-1]) {
+            count++;
+            continue;
+        }
+
+        bytes += 2;
+        while (count /= 10) {
+            bytes++;
+        }
+        count  = 0;
+    }
+
+    CDISPLAY("Bytes = %u", bytes);
+    return bytes;
+} /* cci_c1_5_get_compressed_bytes() */
+
+#if 0
 static char *
 cci_c1_5( char *p_str )
 {
@@ -310,6 +339,9 @@ cci_c1_5( char *p_str )
     // account for '\0' termination space
     bytes += 1;
 
+    //int tmp = cci_c1_5_get_compressed_bytes(p_str, bytes);
+
+#if 0
     p_out = calloc(bytes, sizeof(char));
     if (NULL == p_out) {
         // system failure
@@ -342,7 +374,7 @@ cci_c1_5( char *p_str )
     }
     // dont forget to null terminate o_out!!!
 #endif
-
+#endif
 exception:
     // common cleanup code
     if (compressed == false) {
@@ -354,7 +386,7 @@ exception:
 
     return p_out;
 } /* cci_c1_5() */
-
+#endif
 
 
 /******************************************************************************
@@ -372,127 +404,195 @@ exception:
  *
  ****************************************************************************
  */
+
+static void
+utest_control_1( void )
+{
+    CDISPLAY("cci 1.1a % 1.1.b______________");
+
+    /* 2d array [ROW][COL] */
+    #define COL (32)
+    #define ROW (8)
+
+    bool rc                = false;
+    char string[ROW][COL]  = { "camilla_cardona",
+                               "omar cardona",
+                               "",
+                               "abc123",
+                               "0",
+                               "aaa",
+                               "!@#$",
+                               "Finish"
+                             };
+
+    for (int32_t i = 0; i < ROW; i++) {
+        char     *p_str = &string[0,i];
+        uint32_t  bytes = strlen(p_str);
+
+        CDISPLAY("%s", p_str);
+
+        rc = cci_c1_1a(p_str, bytes);
+        CDISPLAY("%s [%u]: %2u -> %s", (rc ? "TRUE " : "FALSE"), i, bytes, p_str);
+
+        rc = cci_c1_1b(p_str, bytes);
+        CDISPLAY("%s [%u]: %2u -> %s", (rc ? "TRUE " : "FALSE"), i, bytes, p_str);
+    }
+
+    return;
+} /* utest_control_1() */
+
+
+static void
+utest_control_2( void )
+{
+    CDISPLAY("cci 1.2______________");
+
+    /* 2d array [ROW][COL] */
+    #define COL (32)
+    #define ROW (8)
+
+    bool rc                = false;
+    char string[ROW][COL]  = { "camilla_cardona",
+                               "omar cardona",
+                               "",
+                               "abc123",
+                               "0",
+                               "aaa",
+                               "!@#$",
+                               "Finish"
+                             };
+
+    for (int32_t i = 0; i < ROW; i++) {
+        char *p_str = &string[0,i];
+        CDISPLAY("%s", p_str);
+
+        p_str = cci_c1_2(p_str);
+        CDISPLAY("%s", p_str);
+    }
+
+    return;
+} /* utest_control_2() */
+
+
+static void
+utest_control_3( void )
+{
+    CDISPLAY("cci 1.3______________");
+
+    #define N (8)
+
+    bool rc = false;
+    char sta[N][64] = { "\0",
+                        "abcd",
+                        "aaabb",
+                        "abc",
+                        "",
+                        "",
+                        "abc",
+                        "last"
+                      };
+    char stb[N][64] = { "\0",
+                        "cbad",
+                        "aabbb",
+                        "abcd",
+                        "abc",
+                        "",
+                        "\0",
+                        "last"
+                       };
+
+    for (int32_t i = 0; i < N; i++) {
+        char *p_sa = &(sta[i][0]);
+        char *p_sb = &(stb[i][0]);
+
+        CDISPLAY("%s", p_sa);
+        CDISPLAY("%s", p_sb);
+
+        rc = cci_c1_3a(p_sa, p_sb);
+        CDISPLAY("%s", ((rc) ? "TRUE" : "FALSE"));
+        //printf("Press any key to continue:");
+        //getchar();
+    }
+
+    return;
+} /* utest_control_3() */
+
+
+static void
+utest_control_5( void )
+{
+    CDISPLAY("cci 1.5______________");
+
+    char    str[]   = { "aaaabbbccdAAAABBBCCD" };
+    char   *p_out   = NULL;
+    size_t  bytes   = strlen(str);
+    size_t  cbytes  = 0;
+
+    CDISPLAY("%s", str);
+    cbytes = cci_c1_5_get_compressed_bytes(str, bytes);
+    CDISPLAY("%u", cbytes);
+
+    return;
+} /* utest_control_5() */
+
+
+static void
+utest_control_6( void )
+{
+    CDISPLAY("cci 1.6______________");
+
+    #define _COL (5)
+    #define _ROW (5)
+
+    char stx[_COL][_ROW] = { "AAAAA",
+        "BBBBB",
+        "CCCCC",
+        "DDDDD",
+        "EEEEE"
+    };
+#if 0
+    #define ROW (3)
+    #define COL (32)
+
+    char sta[][COL] = { "Omar Cardona",
+                           "Lizandra Chaparro",
+                           "Camilla Cardona"
+                         };
+
+    adts_matrix(_COL, _ROW, sta);
+
+    for (int32_t i = 0; i < ROW; i++) {
+        char *p_str = &(sta[0][i]);
+        CDISPLAY("[0][%u]: %s", i, p_str);
+    }
+
+    for (int32_t i = 0; i < ROW; i++) {
+        char *p_str = &(sta[i][0]);
+        CDISPLAY("[i][0]: %s", i, p_str);
+    }
+#endif
+    return;
+} /* utest_control_6() */
+
+
 static void
 utest_control( void )
 {
-    #define N (8)
-    char string[N][64]  = { "camilla_cardona",
-                            "omar cardona",
-                            "",
-                            "abc123",
-                            "0",
-                            "aaa",
-                            "!@#$",
-                            "Finish"
-                           };
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.1a % 1.1.b______________");
-        bool rc = false;
-
-        for (int32_t i = 0; i < N; i++) {
-            char     *p_str = &string[i,i];
-            uint32_t  bytes = strlen(p_str);
-
-            rc = cci_c1_1a(p_str, bytes);
-            CDISPLAY("%s [%u]: %2u -> %s", (rc ? "TRUE " : "FALSE"), i, bytes, p_str);
-
-            rc = cci_c1_1b(p_str, bytes);
-            CDISPLAY("%s [%u]: %2u -> %s", (rc ? "TRUE " : "FALSE"), i, bytes, p_str);
-        }
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.2______________");
-        for (int32_t i = 0; i < N; i++) {
-            char *p_str = &string[i,i];
-            CDISPLAY("%s", p_str);
-
-            p_str = cci_c1_2(p_str);
-            CDISPLAY("%s", p_str);
-        }
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.3______________");
-
-        bool rc = false;
-        char sta[N][64] = { "\0",
-                             "abcd",
-                             "aaabb",
-                             "abc",
-                             "",
-                             "",
-                             "abc",
-                             "last"
-                           };
-        char stb[N][64] = { "\0",
-                             "cbad",
-                             "aabbb",
-                             "abcd",
-                             "abc",
-                             "",
-                             "\0",
-                             "last"
-                           };
-
-        for (int32_t i = 0; i < N; i++) {
-            char *p_sa = &(sta[i][0]);
-            char *p_sb = &(stb[i][0]);
-
-            CDISPLAY("%s", p_sa);
-            CDISPLAY("%s", p_sb);
-
-            rc = cci_c1_3a(p_sa, p_sb);
-            CDISPLAY("%s", ((rc) ? "TRUE" : "FALSE"));
-            //printf("Press any key to continue:");
-            //getchar();
-        }
-    }
-
-    CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.4______________");
-
-        char mem[256] = {0};
-        char str[]    = { " abc def ghi jkl " };
-
-        memcpy(mem, str, sizeof(str));
-        cci_c1_4(mem, sizeof(mem));
-    }
 
 
     CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.5______________");
-
-        char    str[]   = { "aaaabbbccd" };
-        char   *p_out   = NULL;
-        size_t  bytes   = strlen(str);
-
-        CDISPLAY("%s", str);
-        adts_hexdump(str, bytes, "input");
-        p_out = cci_c1_5(str);
-        adts_hexdump(p_out, bytes, "output");
-        CDISPLAY("%s", p_out);
-    }
-
+    utest_control_1();
     CDISPLAY("=========================================================");
-    {
-        CDISPLAY("cci 1.6______________");
-        #define _COL (5)
-        #define _ROW (5)
-        char sta[_COL][_ROW] = { "AAAAA",
-                                 "BBBBB",
-                                 "CCCCC",
-                                 "DDDDD",
-                                 "EEEEE"
-                               };
-        adts_matrix(_COL, _ROW, sta);
-    }
+    utest_control_2();
+    CDISPLAY("=========================================================");
+    utest_control_3();
+    // where is 4?
+    CDISPLAY("=========================================================");
+    utest_control_5();
+    CDISPLAY("=========================================================");
+    utest_control_6();
+
+
 
 
 

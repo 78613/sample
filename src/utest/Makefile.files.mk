@@ -4,6 +4,7 @@ xH_FILES  += pe.h
 
 xH_FILES  += cci.h
 xH_FILES  += cci_c1.h
+xH_FILES  += cci_c2.h
 
 xH_FILES  += epi.h
 xH_FILES  += misc.h
@@ -16,6 +17,7 @@ xC_FILES  += pe.c
 
 xC_FILES  += cci.c
 xC_FILES  += cci_c1.c
+xC_FILES  += cci_c2.c
 
 xC_FILES  += epi.c
 xC_FILES  += misc.c
