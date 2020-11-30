@@ -60,6 +60,6 @@ cleanup:
 	@echo "Cleanup:"
 	@echo "========"
 	mkdir -p bin
-	mv *.[i,s,o,] bin/
+	mv *.[i,s,o] bin/
 	mv *.bc bin/
 	mv *.so bin/

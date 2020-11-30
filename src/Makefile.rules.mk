@@ -1,7 +1,7 @@
 
 # ======================================================
-#xCC      = colorgcc # C Compiler - color enabled
- xCC      = clang    # C Compiler - improved diagnosability
+#xCC      = gcc
+ xCC      = clang
 
 
 # search online for CLANG/GCC flags referrence
@@ -10,8 +10,6 @@
 # Debug information:
 # ======================================================
  xCFLAGS  += --debug # Enable debugging information
-
-
  xCFLAGS  += -fverbose-asm # assembly output
  xCFLAGS  += -save-temps # Generate preprocessor files - *.i
 
@@ -22,7 +20,7 @@
 
  # Enable all warnings:
  xCFLAGS  += -w           # hide all warnings - overrides all settings below
- xCFLAGS  += -Weverything # enable all CLANG warnings
+#xCFLAGS  += -Weverything # enable all CLANG warnings
  xCFLAGS  += -Wall        # All warnings enabled
  xCFLAGS  += -Wextra
  xCFLAGS  += -Werror 
