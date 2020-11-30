@@ -165,10 +165,12 @@ adts_queue_dequeue( adts_queue_t *p_adts_queue )
 
     if (p_queue->p_head == p_queue->p_tail) {
         /* This is the last element */
+		p_node          = p_queue->p_head;
         p_queue->p_head = NULL;
         p_queue->p_tail = NULL;
     }else {
         /* Remove from tail only */
+		p_node                  = p_queue->p_tail;
         p_queue->p_tail         = p_queue->p_tail->p_prev;
         p_queue->p_tail->p_next = NULL;
     }
